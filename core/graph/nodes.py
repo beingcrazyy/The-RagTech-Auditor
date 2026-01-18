@@ -1,17 +1,40 @@
 from core.state import AuditState
 
-def ingest_node(state : AuditState) -> AuditState:
-    state.audit_trace.append("INGEST")
-    return state
+def ingest_node(state: AuditState) -> dict:
+    return {
+        "audit_trace": state.audit_trace + ["INGEST"]
+    }
 
-def detect_file_type_node(state : AuditState) -> AuditState:
-    state.audit_trace.append("DETECT_FILE_TYPE")
-    state.file_type = "PDF"
-    return state
+def detect_file_type_node(state: AuditState) -> dict:
+    trace = state.audit_trace + ["DETECT_FILE_TYPE"]
+
+    if state.retry_count == 0:
+        return {
+            "audit_trace": trace,
+            "file_type": None
+        }
+
+    return {
+        "audit_trace": trace,
+        "file_type": "PDF"
+    }
+
+def classify_document_node(state: AuditState) -> dict:
+    return {
+        "audit_trace": state.audit_trace + ["CLASSIFY_DOCUMENT"],
+        "document_type": "INVOICE",
+        "classification_confidence": 0.99
+    }
+
+def retry_detect_file_type_node(state: AuditState) -> dict:
+    return {
+        "audit_trace": state.audit_trace + ["RETRY_DETECT_FILE_TYPE"],
+        "retry_count": state.retry_count + 1
+    }
 
 
-def classify_document_node(state : AuditState) -> AuditState:
-    state.audit_trace.append("CLASSIFING_DOCUMENT")
-    state.document_type = "INVOICE"
-    state.classification_confidence = 0.89
-    return state
+def fail_node(state: AuditState) -> dict:
+    return {
+        "audit_trace": state.audit_trace + ["FAILED_EARLY"],
+        "status": "FAILED"
+    }
