@@ -1,12 +1,7 @@
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 from enum import Enum
-
-class DocumentStatus(str, Enum):
-    IN_PROGRESS = "IN_PROGRESS"
-    VERIFIED = "VERIFIED"
-    FLAGGED = "FLAGGED"
-    FAILED = "FAILED"
+from core.enums.document_status import DocumentStatus
 
 class AuditState(BaseModel):
     company_id : Optional[str] = None
@@ -18,7 +13,7 @@ class AuditState(BaseModel):
     document_type : Optional[str] = None
     classification_confidence : Optional[float] = None
 
-    parced_content : Optional[Any] = None
+    parsed_content : Optional[Dict[str, Any]] = None
     extraced_data : Optional[dict[str, Any]] = None
 
     validation_results : Dict[str, Any] = Field(default_factory= dict)

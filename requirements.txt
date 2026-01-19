@@ -1,0 +1,17 @@
+langchain
+langchain-core
+langchain-openai
+langchain-community
+
+langserve
+fastapi
+uvicorn
+
+pydantic
+python-dotenv
+sse_starlette
+
+faiss-cpu
+pypdf
+pypdf2
+pdfplumber

@@ -50,6 +50,8 @@ def start_audit (company_name : str):
         results.append({
                 "document_id": doc["document_id"],
                 "file_type": result.get("file_type"),
+                "parsed_content" : result.get("parsed_content"),
+                "document_type" : result.get("document_type"),
                 "audit_trace": result.get("audit_trace"),
         })
     
