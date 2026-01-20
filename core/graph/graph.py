@@ -6,6 +6,7 @@ from core.graph.nodes import (
     retry_detect_file_type_node,
     parse_pdf_node,
     classify_document_node,
+    extract_invoice_node,
     fail_node
 )
 from core.enums.file_type import FileType
@@ -18,7 +19,9 @@ def build_graph():
     graph.add_node("RETRY_DETECT_FILE_TYPE",retry_detect_file_type_node)
     graph.add_node("PARSE_PDF", parse_pdf_node)
     graph.add_node("CLASSIFY_DOCUMENT", classify_document_node)
+    graph.add_node("EXTRACT_INVOICE", extract_invoice_node)
     graph.add_node("FAIL", fail_node)
+    
 
     graph.set_entry_point("INGEST")
 
@@ -32,7 +35,8 @@ def build_graph():
         })
     graph.add_edge("RETRY_DETECT_FILE_TYPE", "DETECT_FILE_TYPE")
     graph.add_edge("PARSE_PDF", "CLASSIFY_DOCUMENT")
-    graph.add_edge("CLASSIFY_DOCUMENT", END)
+    graph.add_edge("CLASSIFY_DOCUMENT", "EXTRACT_INVOICE")
+    graph.add_edge("EXTRACT_INVOICE", END)
     graph.add_edge("FAIL", END)
 
     return graph.compile()

@@ -4,6 +4,7 @@ from core.enums.document_type import DocumentType
 from services.parser.pdf_parser import parse_pdf
 from services.classifiers.heuristics import heuristics_document_classifier
 from services.classifiers.llm_classifiers import llm_document_classifier
+from services.extractor.invoice_extractor import extract_invoice
 import os
 
 BASE_PATH = "data"
@@ -37,7 +38,7 @@ def parse_pdf_node(state: AuditState) -> dict:
     if state.file_type != FileType.PDF:
         return {}
     
-    trace = state.audit_trace + ["PDF PARSED"]
+    trace = state.audit_trace + ["PARSE_PDF"]
     file_path = state.file_path
 
     result = parse_pdf(file_path)
@@ -46,7 +47,6 @@ def parse_pdf_node(state: AuditState) -> dict:
         "audit_trace" : trace,
         "parsed_content" : result
     }
-
 
 
 def classify_document_node(state: AuditState) -> dict:
@@ -64,6 +64,20 @@ def classify_document_node(state: AuditState) -> dict:
         "audit_trace": state.audit_trace + ["CLASSIFY_DOCUMENT"],
         "document_type": doc_type
     }
+
+def extract_invoice_node(state: AuditState) -> dict:
+    if state.document_type != DocumentType.INVOICE:
+        return {}
+
+    result = extract_invoice(state.parsed_content)
+
+    return {
+        "audit_trace": state.audit_trace + ["EXTRACT_INVOICE"],
+        "extracted_data": result.model_dump()
+    }
+
+
+    
 
 def retry_detect_file_type_node(state: AuditState) -> dict:
     return {

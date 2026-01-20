@@ -31,7 +31,6 @@ def start_audit (req : StartAuditRequest):
 
 @app.post("/audit/company")
 def start_audit (company_name : str):
-
     base_path = "data"
 
     docs = enumerate_company_documents(company_name, base_path)
@@ -52,6 +51,7 @@ def start_audit (company_name : str):
                 "file_type": result.get("file_type"),
                 "parsed_content" : result.get("parsed_content"),
                 "document_type" : result.get("document_type"),
+                "extraced_data" : result.get("extraced_data"),
                 "audit_trace": result.get("audit_trace"),
         })
     
