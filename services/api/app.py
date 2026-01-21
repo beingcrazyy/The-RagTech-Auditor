@@ -37,22 +37,29 @@ def start_audit (company_name : str):
 
     results = []
 
-    for doc in docs:
+    for i, doc in enumerate(docs[:5], start=1):
+        print(f"Processing document {i}/{min(len(docs), 5)}: {doc['document_id']}")
+
         state = AuditState(
-            company_id= doc["company_id"],
+            company_id=doc["company_id"],
             document_id=doc["document_id"],
             file_path=doc["file_path"]
         )
+        print("Initial State:", state.model_dump())
 
         result = graph.invoke(state)
+        print("Final Result:", result)
 
         results.append({
-                "document_id": doc["document_id"],
-                "file_type": result.get("file_type"),
-                "parsed_content" : result.get("parsed_content"),
-                "document_type" : result.get("document_type"),
-                "extraced_data" : result.get("extraced_data"),
-                "audit_trace": result.get("audit_trace"),
+            "document_id": doc["document_id"],
+            "file_type": result.get("file_type"),
+            "parsed_content": result.get("parsed_content"),
+            "document_type": result.get("document_type"),
+            "extraced_data": result.get("extraced_data"),
+            "audit_trace": result.get("audit_trace"),
+            "validation_results": result.get("validation_results"),
+            "status": result.get("status"),
+            "audit_summary": result.get("audit_summary")
         })
     
     return {

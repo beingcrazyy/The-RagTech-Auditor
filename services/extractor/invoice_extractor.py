@@ -14,8 +14,8 @@ client = OpenAI()
 
 def extract_invoice(parsed_content: dict) -> InvoiceSchema:
 
-    print("DEBUG parsed_content type:", type(parsed_content))
-    print("DEBUG parsed_content:", parsed_content)
+    # print("DEBUG parsed_content type:", type(parsed_content))
+    # print("DEBUG parsed_content:", parsed_content)
     
     # Defensive check
     if not isinstance(parsed_content, dict):

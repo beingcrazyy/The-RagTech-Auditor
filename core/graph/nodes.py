@@ -5,6 +5,9 @@ from services.parser.pdf_parser import parse_pdf
 from services.classifiers.heuristics import heuristics_document_classifier
 from services.classifiers.llm_classifiers import llm_document_classifier
 from services.extractor.invoice_extractor import extract_invoice
+from core.rules.invoice_validation import validate_invoice
+from core.rules.final_decision import decide_final_status
+from services.ml.audit_summary_generator import generate_audit_summary
 import os
 
 BASE_PATH = "data"
@@ -73,11 +76,42 @@ def extract_invoice_node(state: AuditState) -> dict:
 
     return {
         "audit_trace": state.audit_trace + ["EXTRACT_INVOICE"],
-        "extracted_data": result.model_dump()
+        "extraced_data": result.model_dump()
+    }
+
+def validate_invoice_node(state : AuditState) -> dict:
+
+    if state.document_type != DocumentType.INVOICE:
+        return {}
+    
+    validation_results = validate_invoice(state.extraced_data)
+
+    return {
+        "audit_trace": state.audit_trace + ["VALIDATE_INVOICE"],
+        "validation_results": validation_results
+    }
+
+def final_decision_node(state : AuditState) -> dict:
+
+    final_status = decide_final_status(validation_results= state.validation_results, ml_signals= state.ml_signals)
+
+    return {
+        "audit_trace": state.audit_trace + ["FINAL_DECISION"],
+        "status": final_status
     }
 
 
+def audit_summery_generator_node(state : AuditState) -> dict:
     
+    summary = generate_audit_summary(
+        status= state.status.value,
+        hard_failures=state.validation_results.get("hard_failures", []),
+        soft_failures=state.validation_results.get("soft_failures", []))
+
+    return {
+        "audit_trace": state.audit_trace + ["AUDIT_SUMMARY_GENERATOR"],
+        "audit_summary": summary
+    }
 
 def retry_detect_file_type_node(state: AuditState) -> dict:
     return {

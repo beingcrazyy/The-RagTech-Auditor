@@ -7,8 +7,12 @@ from core.graph.nodes import (
     parse_pdf_node,
     classify_document_node,
     extract_invoice_node,
+    validate_invoice_node,
+    final_decision_node,
+    audit_summery_generator_node,
     fail_node
 )
+
 from core.enums.file_type import FileType
 
 def build_graph():
@@ -20,6 +24,9 @@ def build_graph():
     graph.add_node("PARSE_PDF", parse_pdf_node)
     graph.add_node("CLASSIFY_DOCUMENT", classify_document_node)
     graph.add_node("EXTRACT_INVOICE", extract_invoice_node)
+    graph.add_node("VALIDATE_INVOICE", validate_invoice_node)
+    graph.add_node("FINAL_DECISION", final_decision_node)
+    graph.add_node("AUDIT_SUMMARY", audit_summery_generator_node)
     graph.add_node("FAIL", fail_node)
     
 
@@ -36,7 +43,10 @@ def build_graph():
     graph.add_edge("RETRY_DETECT_FILE_TYPE", "DETECT_FILE_TYPE")
     graph.add_edge("PARSE_PDF", "CLASSIFY_DOCUMENT")
     graph.add_edge("CLASSIFY_DOCUMENT", "EXTRACT_INVOICE")
-    graph.add_edge("EXTRACT_INVOICE", END)
+    graph.add_edge("EXTRACT_INVOICE", "VALIDATE_INVOICE")
+    graph.add_edge("VALIDATE_INVOICE", "FINAL_DECISION")
+    graph.add_edge("FINAL_DECISION", "AUDIT_SUMMARY")
+    graph.add_edge("AUDIT_SUMMARY", END)
     graph.add_edge("FAIL", END)
 
     return graph.compile()

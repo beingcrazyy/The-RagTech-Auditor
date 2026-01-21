@@ -20,7 +20,9 @@ class AuditState(BaseModel):
     ml_signals : Dict[str, Any] = Field(default_factory= dict)
 
     retry_count : int = 0
-    status : DocumentStatus = DocumentStatus.IN_PROGRESS
+    status : Optional[DocumentStatus] = None
+    audit_summary : Optional[str] = None
+
 
     audit_trace : List[str] = Field(default_factory=list)
 
