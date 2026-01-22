@@ -3,10 +3,14 @@ FROM python:3.11-slim
 WORKDIR /app
 
 COPY requirements.txt .
-
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app app
-COPY doc doc
+# copy actual source folders
+COPY core core
+COPY services services
+# copy runtime code ONLY
+COPY core core
+COPY services services
+COPY config config
 
-CMD [ "uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "8080" ]
+CMD ["uvicorn", "services.api.app:app", "--host", "0.0.0.0", "--port", "8080"]
