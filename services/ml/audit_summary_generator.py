@@ -20,7 +20,7 @@ def generate_audit_summary(
 
     Rules:
     - Write 1–2 concise sentences
-    - Do NOT invent facts
+    - Do NOT inven facts
     - Do NOT mention numbers
     - Only explain the status based on issues listed
     """
