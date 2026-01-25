@@ -1,12 +1,18 @@
 from fastapi import FastAPI
+from fastapi import APIRouter, HTTPException
 from core.graph.graph import build_graph
 from core.state import AuditState
-from services.api.models import StartAuditRequest
+from services.api.models import StartAuditRequest, CreateCompanyRequest
 from services.orchestrater.bundle_ingester import enumerate_company_documents
+from infra.db.db_functions import insert_company
 
 app = FastAPI(title = "The RegTech Auditor API")
 
 graph = build_graph()
+
+#-------------------------------------------------------------------------------------------------
+# START AUDIT ON DOCUMENT BASIS API 
+#-------------------------------------------------------------------------------------------------
 
 @app.post("/audit/start")
 def start_audit (req : StartAuditRequest):
@@ -28,6 +34,10 @@ def start_audit (req : StartAuditRequest):
         "document_type": result["document_type"],
     }
 
+
+#-------------------------------------------------------------------------------------------------
+# START AUDIT ON COMPANY BASIS API
+#-------------------------------------------------------------------------------------------------
 
 @app.post("/audit/company")
 def start_audit (company_name : str):
@@ -69,4 +79,33 @@ def start_audit (company_name : str):
     }
 
 
+#-------------------------------------------------------------------------------------------------
+# CREAT COMPANY API
+#-------------------------------------------------------------------------------------------------
+
+def generate_company_id(name: str) -> str:
+    return name.lower().replace(" ", "_")
+
+@app.post("/create/company")
+def create_company (request : CreateCompanyRequest):
+    company_id = generate_company_id(request.company_name)
+
+    try:
+        insert_company(
+            company_id=company_id,
+            company_name=request.company_name,
+            category=request.category,
+            country=request.country,
+            description=request.description
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Company creation failed: {str(e)}"
+        )
+
+    return {
+        "company_id": company_id,
+        "message": "Company created successfully"
+    }
 
