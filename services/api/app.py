@@ -4,12 +4,12 @@ from core.graph.graph import build_graph
 from core.state import AuditState
 from services.api.models import StartAuditRequest, CreateCompanyRequest
 from services.orchestrater.bundle_ingester import enumerate_company_documents
-from infra.db.db_functions import insert_company
+from services.api.create_company import router as create_company_router
+from services.api.add_documents import router as upload_document_router
 
 app = FastAPI(title = "The RegTech Auditor API")
 
 graph = build_graph()
-
 #-------------------------------------------------------------------------------------------------
 # START AUDIT ON DOCUMENT BASIS API 
 #-------------------------------------------------------------------------------------------------
@@ -80,32 +80,19 @@ def start_audit (company_name : str):
 
 
 #-------------------------------------------------------------------------------------------------
-# CREAT COMPANY API
+# CREATE COMPANY API
 #-------------------------------------------------------------------------------------------------
 
-def generate_company_id(name: str) -> str:
-    return name.lower().replace(" ", "_")
+app.include_router(create_company_router)
 
-@app.post("/create/company")
-def create_company (request : CreateCompanyRequest):
-    company_id = generate_company_id(request.company_name)
 
-    try:
-        insert_company(
-            company_id=company_id,
-            company_name=request.company_name,
-            category=request.category,
-            country=request.country,
-            description=request.description
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Company creation failed: {str(e)}"
-        )
+#-------------------------------------------------------------------------------------------------
+# UPLOAD DOCUMENT API
+#-------------------------------------------------------------------------------------------------
 
-    return {
-        "company_id": company_id,
-        "message": "Company created successfully"
-    }
+app.include_router(upload_document_router)
+
+
+
+
 
