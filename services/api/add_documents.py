@@ -24,6 +24,8 @@ async def upload_documents(company_id : str, files : List[UploadFile] = File(...
     
     inserted= []
 
+    duplicate = 0
+
     for file in files:
         document_id = create_document_id(file.filename)
         filepath = os.path.join(company_dir, document_id)
@@ -32,23 +34,27 @@ async def upload_documents(company_id : str, files : List[UploadFile] = File(...
         with open (filepath, "wb") as f:
             f.write(content)
 
-        insert_document(
+        inserted_flag = insert_document(
             document_id=document_id,
             company_id= company_id,
             file_name=file.filename,
             file_path=filepath
-            )
+        )
         
-        inserted.append({
-            "document_id" : document_id,
-            "file_name" : file.filename
-        })
+        if inserted_flag:
+            inserted.append({
+                "document_id": document_id,
+                "file_name": file.filename
+            })
+        else:
+            duplicate+=1
 
-        return {
-            "company_id" : company_id,
-            "document_inserted" : len(inserted),
-            "documents" : inserted
-        }
+    return {
+        "company_id" : company_id,
+        "document_inserted" : len(inserted),
+        "duplicate_documents" : duplicate,
+        "documents" : inserted
+    }
 
         
 

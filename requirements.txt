@@ -15,3 +15,5 @@ faiss-cpu
 pypdf
 pypdf2
 pdfplumber
+
+python-multipart

@@ -1,4 +1,5 @@
 from infra.db.db import get_connection
+import sqlite3
 import json
 
 def insert_company(
@@ -37,22 +38,26 @@ def insert_document(
 ):
     conn = get_connection()
     cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        INSERT INTO documents (
-            document_id,
-            company_id,
-            file_name,
-            file_path
+    try:
+        cursor.execute(
+            """
+            INSERT INTO documents (
+                document_id,
+                company_id,
+                file_name,
+                file_path
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (document_id, company_id, file_name, file_path)
         )
-        VALUES (?, ?, ?, ?)
-        """,
-        (document_id, company_id, file_name, file_path)
-    )
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
 
 
 def start_document_audit(document_id: str):

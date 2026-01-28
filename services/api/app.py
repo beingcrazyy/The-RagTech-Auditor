@@ -10,6 +10,7 @@ from services.api.add_documents import router as upload_document_router
 app = FastAPI(title = "The RegTech Auditor API")
 
 graph = build_graph()
+
 #-------------------------------------------------------------------------------------------------
 # START AUDIT ON DOCUMENT BASIS API 
 #-------------------------------------------------------------------------------------------------

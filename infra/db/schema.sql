@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS documents (
     document_type TEXT,
     uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (company_id) REFERENCES companies(company_id)
+
+    UNIQUE(company_id, file_name)
 );
 
 CREATE TABLE IF NOT EXISTS document_audits (
