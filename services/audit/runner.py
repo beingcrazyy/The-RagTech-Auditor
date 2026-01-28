@@ -14,6 +14,14 @@ def run_company_audit(company_id : str, documents : list) -> dict :
             document_id=document_id,
             status="VERIFIED",
             audit_summary="All checks passed",
-            hard_failures=[],
+            hard_failures=[
+                {
+                    "rule_id": "ISO_27001_A.9.1",
+                    "severity": "HARD",
+                    "message": "Access control policy missing",
+                    "evidence_ref": "page_4",
+                    "confidence": 0.92
+                }
+            ],
             soft_failures=[]
         )

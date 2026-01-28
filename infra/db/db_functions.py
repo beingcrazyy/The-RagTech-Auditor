@@ -60,26 +60,32 @@ def insert_document(
         conn.close()
 
 
-def start_document_audit(document_id: str):
+def start_document_audit(document_id: str, company_id : str):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        INSERT INTO document_audits (
-            document_id,
-            company_id,
-            status,
-            progress,
-            started_at
+    try: 
+        cursor.execute(
+            """
+            INSERT INTO document_audits (
+                document_id,
+                company_id,
+                status,
+                progress,
+                started_at
+            )
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """,
+            (document_id,company_id, "IN_PROGRESS", 0)
         )
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-        """,
-        (document_id, "IN_PROGRESS", 0)
-    )
+        conn.commit()
 
-    conn.commit()
-    conn.close()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
 
 
 def update_document_progress(document_id: str, progress: int):
@@ -145,10 +151,85 @@ def get_documents_for_company(company_id : str):
         FROM documents
         WHERE company_id = ?
         """,
-        (company_id)
+        (company_id,)
     )
 
     rows = cursor.fetchall()
     conn.close()
 
     return [{"document_id": r[0]} for r in rows]
+
+
+def get_audit_status_for_company(company_id: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            document_id,
+            status,
+            progress,
+            started_at,
+            completed_at
+        FROM document_audits
+        WHERE company_id = ?
+        ORDER BY started_at ASC
+        """,
+        (company_id,)
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "document_id": r[0],
+            "status": r[1],
+            "progress": r[2],
+            "started_at": r[3],
+            "completed_at": r[4],
+        }
+        for r in rows
+    ]
+
+
+def get_document_audit_details(company_id: str, document_id: str) -> dict :
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            document_id,
+            status,
+            progress,
+            audit_summary,
+            hard_failures,
+            soft_failures,
+            started_at,
+            completed_at
+        FROM document_audits
+        WHERE company_id = ?
+          AND document_id = ?
+        """,
+        (company_id, document_id)
+    )
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return {
+        "document_id": row[0],
+        "status": row[1],
+        "progress": row[2],
+        "audit_summary": row[3],
+        "hard_failures": json.loads(row[4]) if row[4] else [],
+        "soft_failures": json.loads(row[5]) if row[5] else [],
+        "started_at": row[6],
+        "completed_at": row[7],
+    }
+

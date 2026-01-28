@@ -7,6 +7,8 @@ from services.orchestrater.bundle_ingester import enumerate_company_documents
 from services.api.create_company import router as create_company_router
 from services.api.add_documents import router as upload_document_router
 from services.api.start_audit import router as start_audit_router
+from services.api.document_audit_details import router as document_detail_router
+from services.api.audit_status import router as audit_status_router
 
 app = FastAPI(title = "The RegTech Auditor API")
 
@@ -99,6 +101,18 @@ app.include_router(upload_document_router)
 #-------------------------------------------------------------------------------------------------
 
 app.include_router(start_audit_router)
+
+#-------------------------------------------------------------------------------------------------
+# AUDIT STATUS API
+#-------------------------------------------------------------------------------------------------
+
+app.include_router(audit_status_router)
+
+#-------------------------------------------------------------------------------------------------
+# AUDIT STATUS API
+#-------------------------------------------------------------------------------------------------
+
+app.include_router(document_detail_router)
 
 
 

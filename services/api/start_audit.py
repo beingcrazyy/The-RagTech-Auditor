@@ -3,7 +3,7 @@ from infra.db.db_functions import start_document_audit, get_documents_for_compan
 from services.audit.runner import run_company_audit
 from datetime import datetime
 
-router = APIRouter(prefix="/companies/{company_id}/audit", tags="audit")
+router = APIRouter(prefix="/companies/{company_id}/audit", tags=["audit"])
 
 @router.post("/start")
 def start_audit(company_id : str, background_tasks : BackgroundTasks) -> dict:
@@ -17,7 +17,7 @@ def start_audit(company_id : str, background_tasks : BackgroundTasks) -> dict:
 
     for doc in docs:
         start_document_audit(
-            document_id= doc.document_id,
+            document_id= doc["document_id"],
             company_id=company_id
         )
 
