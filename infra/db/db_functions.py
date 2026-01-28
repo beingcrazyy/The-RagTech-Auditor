@@ -68,11 +68,12 @@ def start_document_audit(document_id: str):
         """
         INSERT INTO document_audits (
             document_id,
+            company_id,
             status,
             progress,
             started_at
         )
-        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
         """,
         (document_id, "IN_PROGRESS", 0)
     )
@@ -132,3 +133,22 @@ def finalize_document_audit(
 
     conn.commit()
     conn.close()
+
+
+def get_documents_for_company(company_id : str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT document_id
+        FROM documents
+        WHERE company_id = ?
+        """,
+        (company_id)
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [{"document_id": r[0]} for r in rows]

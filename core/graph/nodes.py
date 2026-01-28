@@ -7,7 +7,7 @@ from services.classifiers.llm_classifiers import llm_document_classifier
 from services.extractor.invoice_extractor import extract_invoice
 from core.rules.invoice_validation import validate_invoice
 from core.rules.final_decision import decide_final_status
-from services.ml.audit_summary_generator import generate_audit_summary
+from services.audit.audit_summary_generator import generate_audit_summary
 import os
 
 BASE_PATH = "data"

@@ -6,6 +6,7 @@ from services.api.models import StartAuditRequest, CreateCompanyRequest
 from services.orchestrater.bundle_ingester import enumerate_company_documents
 from services.api.create_company import router as create_company_router
 from services.api.add_documents import router as upload_document_router
+from services.api.start_audit import router as start_audit_router
 
 app = FastAPI(title = "The RegTech Auditor API")
 
@@ -92,6 +93,12 @@ app.include_router(create_company_router)
 #-------------------------------------------------------------------------------------------------
 
 app.include_router(upload_document_router)
+
+#-------------------------------------------------------------------------------------------------
+# START AUDIT API
+#-------------------------------------------------------------------------------------------------
+
+app.include_router(start_audit_router)
 
 
 

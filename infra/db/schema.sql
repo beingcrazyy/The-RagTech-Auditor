@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS documents (
 
 CREATE TABLE IF NOT EXISTS document_audits (
     document_id TEXT PRIMARY KEY,
+    company_id TEXT 
     status TEXT,
     progress INTEGER,
     audit_summary TEXT,
