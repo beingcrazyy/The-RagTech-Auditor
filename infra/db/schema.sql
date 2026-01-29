@@ -32,3 +32,14 @@ CREATE TABLE IF NOT EXISTS document_audits (
     completed_at DATETIME,
     FOREIGN KEY (document_id) REFERENCES documents(document_id)
 );
+
+
+CREATE TABLE IF NOT EXISTS audit_rules (
+    rule_id TEXT PRIMARY KEY,
+    framework TEXT NOT NULL,
+    category TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    severity TEXT NOT NULL,         -- HARD / SOFT
+    evidence_required TEXT NOT NULL -- JSON list
+);

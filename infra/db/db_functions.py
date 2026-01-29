@@ -233,3 +233,53 @@ def get_document_audit_details(company_id: str, document_id: str) -> dict :
         "completed_at": row[7],
     }
 
+def reset_document_audit(company_id : str, document_id : str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        UPDATE document_audits
+        SET
+            status = 'IN_PROGRESS'
+            progress = 0,
+            audit_summary = NULL,
+            hard_failures = NULL,
+            soft_failures = NULL,
+            completed_at = CURRENT_TIMESTAMP
+        WHERE document_id = ?
+        """,
+        (document_id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def get_rules_by_framework(framework: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT rule_id, category, title, description, severity, evidence_required
+        FROM audit_rules
+        WHERE framework = ?
+        """,
+        (framework,)
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "rule_id": r[0],
+            "category": r[1],
+            "title": r[2],
+            "description": r[3],
+            "severity": r[4],
+            "evidence_required": json.loads(r[5])
+        }
+        for r in rows
+    ]

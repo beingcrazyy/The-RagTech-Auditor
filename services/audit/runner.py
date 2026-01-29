@@ -25,3 +25,7 @@ def run_company_audit(company_id : str, documents : list) -> dict :
             ],
             soft_failures=[]
         )
+
+def run_single_document_audit(company_id : str, document_id : str):
+    documents = [{"document_id": document_id}]
+    run_company_audit(company_id= company_id, documents= documents)
