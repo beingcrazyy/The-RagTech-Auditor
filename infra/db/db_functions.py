@@ -256,30 +256,29 @@ def reset_document_audit(company_id : str, document_id : str):
     conn.close()
 
 
-def get_rules_by_framework(framework: str):
+def get_rule_by_id(rule_id: str):
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
         """
-        SELECT rule_id, category, title, description, severity, evidence_required
+        SELECT rule_id, severity, category, title
         FROM audit_rules
-        WHERE framework = ?
+        WHERE rule_id = ?
         """,
-        (framework,)
+        (rule_id,)
     )
 
-    rows = cursor.fetchall()
+    row = cursor.fetchone()
     conn.close()
 
-    return [
-        {
-            "rule_id": r[0],
-            "category": r[1],
-            "title": r[2],
-            "description": r[3],
-            "severity": r[4],
-            "evidence_required": json.loads(r[5])
-        }
-        for r in rows
-    ]
+    if not row:
+        raise Exception(f"Rule not found: {rule_id}")
+
+    return {
+        "rule_id": row[0],
+        "severity": row[1],
+        "category": row[2],
+        "title": row[3]
+    }
+
