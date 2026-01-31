@@ -6,7 +6,7 @@ class StartAuditRequest(BaseModel):
     
 class CreateCompanyRequest(BaseModel):
     company_name: str
-    description: str | None = None
-    category: str
-    country: str
+    company_description: str | None = None
+    company_category: str
+    company_country: str
 

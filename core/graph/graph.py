@@ -10,7 +10,8 @@ from core.graph.nodes import (
     validate_invoice_node,
     final_decision_node,
     audit_summery_generator_node,
-    fail_node
+    fail_node,
+    persist_results_node
 )
 
 from core.enums.file_type import FileType
@@ -28,6 +29,7 @@ def build_graph():
     graph.add_node("FINAL_DECISION", final_decision_node)
     graph.add_node("AUDIT_SUMMARY", audit_summery_generator_node)
     graph.add_node("FAIL", fail_node)
+    graph.add_node("PERSIST_RESULT", persist_results_node)
     
 
     graph.set_entry_point("INGEST")
@@ -46,7 +48,8 @@ def build_graph():
     graph.add_edge("EXTRACT_INVOICE", "VALIDATE_INVOICE")
     graph.add_edge("VALIDATE_INVOICE", "FINAL_DECISION")
     graph.add_edge("FINAL_DECISION", "AUDIT_SUMMARY")
-    graph.add_edge("AUDIT_SUMMARY", END)
+    graph.add_edge("AUDIT_SUMMARY", "PERSIST_RESULT")
+    graph.add_edge("PERSIST_RESULT", END)
     graph.add_edge("FAIL", END)
 
     return graph.compile()

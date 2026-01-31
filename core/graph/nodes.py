@@ -8,6 +8,9 @@ from services.extractor.invoice_extractor import extract_invoice
 from core.rules.invoice_validation import validate_invoice
 from core.rules.final_decision import decide_final_status
 from services.audit.audit_summary_generator import generate_audit_summary
+from infra.db.db_functions import finalize_document_audit
+
+
 import os
 
 BASE_PATH = "data"
@@ -125,3 +128,17 @@ def fail_node(state: AuditState) -> dict:
         "audit_trace": state.audit_trace + ["FAILED_EARLY"],
         "status": "FAILED"
     }
+
+def persist_results_node(state: AuditState) -> dict:
+    finalize_document_audit(
+        document_id=state.document_id,
+        status=state.status.value,
+        audit_summary=state.audit_summary,
+        hard_failures=state.validation_results.get("hard_failures", []),
+        soft_failures=state.validation_results.get("soft_failures", [])
+    )
+
+    return {
+        "audit_trace": state.audit_trace + ["PERSIST_RESULTS"]
+    }
+

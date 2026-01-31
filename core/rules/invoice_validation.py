@@ -1,4 +1,5 @@
 from typing import Dict, List, Optional
+from infra.db.db_functions import get_rule_by_id
 
 def emit(rule_id: str, message: str, evidence_ref: str, confidence: float = 1.0) -> Dict:
     return {
@@ -66,20 +67,6 @@ def check_subtotal_cgst_sgst_equals_total(invoice: dict) -> Optional[Dict]:
 
 
 
-def rule_fin_inv_math_002(invoice: dict) -> Optional[Dict]:
-    subtotal = invoice.get("subtotal")
-    igst = invoice.get("igst")
-    total = invoice.get("total_amount")
-
-    if None not in (subtotal, igst, total):
-        if abs((subtotal + igst) - total) > 1:
-            return emit(
-                "FIN_INV_MATH_002",
-                "Subtotal + IGST does not equal total",
-                "tax_breakup"
-            )
-    return None
-
 def check_subtotal_igst_equals_total(invoice: dict) -> Optional[Dict]:
     subtotal = invoice.get("subtotal")
     igst = invoice.get("igst")
@@ -119,3 +106,45 @@ INVOICE_RULES = [
     check_subtotal_igst_equals_total,
     check_cgst_sgst_mismatch
 ]
+
+def validate_invoice(invoice: dict) -> dict:
+    raw_failures = []
+
+    # 1. Execute rules and collect RESULTS
+    for rule in INVOICE_RULES:
+        result = rule(invoice)
+        if result:
+            raw_failures.append(result)
+
+    if not raw_failures:
+        return {
+            "hard_failures": [],
+            "soft_failures": []
+        }
+
+    hard_failures = []
+    soft_failures = []
+
+    # 2. Enrich using rule_id
+    for failure in raw_failures:
+        rule_id = failure["rule_id"]
+        details = get_rule_by_id(rule_id)
+
+        enriched = {
+            **failure,
+            "severity": details["severity"],
+            "category": details["category"],
+            "title": details["title"]
+        }
+
+        if details["severity"] == "HARD":
+            hard_failures.append(enriched)
+        else:
+            soft_failures.append(enriched)
+
+    return {
+        "hard_failures": hard_failures,
+        "soft_failures": soft_failures
+    }
+
+

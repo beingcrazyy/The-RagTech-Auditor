@@ -5,9 +5,9 @@ import json
 def insert_company(
         company_id, 
         company_name,
-        category,
-        country,
-        description
+        company_category,
+        company_country,
+        company_description
         ):
     conn = get_connection()
     cursor = conn.cursor()
@@ -24,7 +24,7 @@ def insert_company(
         )
         VALUES (?, ?, ?, ?, ?)
         """,
-        (company_id, company_name, category, country, description)
+        (company_id, company_name, company_category, company_country, company_description)
     )
 
     conn.commit()

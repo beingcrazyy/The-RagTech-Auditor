@@ -17,9 +17,9 @@ def create_company(request: CreateCompanyRequest):
         insert_company(
             company_id=company_id,
             company_name=request.company_name,
-            category=request.category,
-            country=request.country,
-            description=request.description
+            company_category=request.company_category,
+            company_country=request.company_country,
+            company_description=request.company_description
         )
     except Exception as e:
         raise HTTPException(
