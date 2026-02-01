@@ -9,7 +9,9 @@ from services.api.add_documents import router as upload_document_router
 from services.api.start_audit import router as start_audit_router
 from services.api.document_audit_details import router as document_detail_router
 from services.api.audit_status import router as audit_status_router
+from config.logger import setup_logging
 
+setup_logging()
 app = FastAPI(title = "The RegTech Auditor API")
 
 

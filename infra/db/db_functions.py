@@ -1,6 +1,9 @@
 from infra.db.db import get_connection
 import sqlite3
 import json
+from config.logger import get_logger
+
+logger = get_logger(__name__)
 
 def insert_company(
         company_id, 
@@ -9,6 +12,7 @@ def insert_company(
         company_country,
         company_description
         ):
+    logger.info(f"Inserting company: {company_name} ({company_id})")
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -29,6 +33,7 @@ def insert_company(
 
     conn.commit()
     conn.close()
+    logger.info(f"Successfully inserted company: {company_id}")
 
 def insert_document(
     document_id: str,
@@ -36,6 +41,7 @@ def insert_document(
     file_name: str,
     file_path: str
 ):
+    logger.info(f"Inserting document: {file_name} for company: {company_id}")
     conn = get_connection()
     cursor = conn.cursor()
     try:
@@ -53,14 +59,20 @@ def insert_document(
         )
 
         conn.commit()
+        logger.info(f"Successfully inserted document: {document_id}")
         return True
     except sqlite3.IntegrityError:
+        logger.warning(f"Document already exists: {document_id}")
+        return False
+    except Exception as e:
+        logger.error(f"Error inserting document {document_id}: {e}")
         return False
     finally:
         conn.close()
 
 
 def start_document_audit(document_id: str, company_id : str):
+    logger.info(f"Starting audit record for document: {document_id} (Company: {company_id})")
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -79,9 +91,13 @@ def start_document_audit(document_id: str, company_id : str):
             (document_id,company_id, "IN_PROGRESS", 0)
         )
         conn.commit()
-
+        logger.info(f"Audit record created for {document_id}")
         return True
     except sqlite3.IntegrityError:
+        logger.warning(f"Audit already in progress/exists for document: {document_id}")
+        return False
+    except Exception as e:
+        logger.error(f"Error starting audit record for {document_id}: {e}")
         return False
     finally:
         conn.close()
@@ -89,6 +105,7 @@ def start_document_audit(document_id: str, company_id : str):
 
 
 def update_document_progress(document_id: str, progress: int):
+    logger.debug(f"Updating progress for {document_id}: {progress}%")
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -112,6 +129,7 @@ def finalize_document_audit(
     hard_failures: list,
     soft_failures: list
 ):
+    logger.info(f"Finalizing audit for {document_id} with status: {status}")
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -139,6 +157,7 @@ def finalize_document_audit(
 
     conn.commit()
     conn.close()
+    logger.info(f"Successfully finalized audit for {document_id}")
 
 
 def get_documents_for_company(company_id : str):
