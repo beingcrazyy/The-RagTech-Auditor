@@ -43,6 +43,16 @@ CREATE TABLE IF NOT EXISTS audit_rules (
     severity TEXT
 );
 
+CREATE TABLE IF NOT EXISTS company_audit_history (
+    audit_id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL,
+    status TEXT,
+    started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME,
+    details TEXT,
+    FOREIGN KEY (company_id) REFERENCES companies(company_id)
+);
+
 INSERT OR IGNORE INTO audit_rules
 (rule_id, framework, category, title, description, severity)
 VALUES

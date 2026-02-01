@@ -306,3 +306,129 @@ def get_rule_by_id(rule_id: str):
         "title": row[3]
     }
 
+
+def get_all_companies():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Query to get company info along with document counts and audit status counts
+    cursor.execute(
+        """
+        SELECT 
+            c.company_id, 
+            c.company_name, 
+            c.company_category, 
+            c.company_country,
+            COUNT(d.document_id) as total_documents,
+            COUNT(CASE WHEN da.status = 'VERIFIED' THEN 1 END) as verified_documents,
+            COUNT(CASE WHEN da.status = 'FLAGGED' THEN 1 END) as flagged_documents,
+            COUNT(CASE WHEN da.status = 'FAILED' THEN 1 END) as failed_documents
+        FROM companies c
+        LEFT JOIN documents d ON c.company_id = d.company_id
+        LEFT JOIN document_audits da ON d.document_id = da.document_id
+        GROUP BY c.company_id
+        """
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "company_id": r[0],
+            "company_name": r[1],
+            "company_category": r[2],
+            "company_country": r[3],
+            "total_documents": r[4],
+            "verified_documents": r[5],
+            "flagged_documents": r[6],
+            "failed_documents": r[7]
+        }
+        for r in rows
+    ]
+
+
+def get_company_documents_detailed(company_id: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT 
+            d.document_id,
+            d.file_name,
+            d.file_path,
+            d.uploaded_at,
+            da.status,
+            da.progress,
+            da.audit_summary
+        FROM documents d
+        LEFT JOIN document_audits da ON d.document_id = da.document_id
+        WHERE d.company_id = ?
+        """,
+        (company_id,)
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "document_id": r[0],
+            "file_name": r[1],
+            "file_path": r[2],
+            "uploaded_at": r[3],
+            "status": r[4],
+            "progress": r[5],
+            "audit_summary": r[6]
+        }
+        for r in rows
+    ]
+
+
+def create_company_audit_record(audit_id: str, company_id: str, status: str = "INITIATED"):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    logger.info(f"Creating audit history record {audit_id} for company {company_id}")
+    
+    cursor.execute(
+        """
+        INSERT INTO company_audit_history (audit_id, company_id, status)
+        VALUES (?, ?, ?)
+        """,
+        (audit_id, company_id, status)
+    )
+    
+    conn.commit()
+    conn.close()
+
+
+def get_company_audit_history(company_id: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        """
+        SELECT audit_id, status, started_at, completed_at, details
+        FROM company_audit_history
+        WHERE company_id = ?
+        ORDER BY started_at DESC
+        """,
+        (company_id,)
+    )
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [
+        {
+            "audit_id": r[0],
+            "status": r[1],
+            "started_at": r[2],
+            "completed_at": r[3],
+            "details": r[4]
+        }
+        for r in rows
+    ]
+

@@ -9,10 +9,24 @@ from services.api.add_documents import router as upload_document_router
 from services.api.start_audit import router as start_audit_router
 from services.api.document_audit_details import router as document_detail_router
 from services.api.audit_status import router as audit_status_router
+from services.api.auth import router as auth_router
+from services.api.get_companies import router as get_companies_router
+from services.api.audit_history import router as audit_history_router
+from services.api.reports import router as reports_router
 from config.logger import setup_logging
+from fastapi.middleware.cors import CORSMiddleware
 
 setup_logging()
 app = FastAPI(title = "The RegTech Auditor API")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Allow all origins for development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # #-------------------------------------------------------------------------------------------------
@@ -108,12 +122,16 @@ app.include_router(start_audit_router)
 #-------------------------------------------------------------------------------------------------
 
 app.include_router(audit_status_router)
+app.include_router(get_companies_router)
+app.include_router(audit_history_router)
 
 #-------------------------------------------------------------------------------------------------
 # AUDIT STATUS API
 #-------------------------------------------------------------------------------------------------
 
 app.include_router(document_detail_router)
+app.include_router(auth_router)
+app.include_router(reports_router)
 
 
 

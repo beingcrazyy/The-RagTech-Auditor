@@ -1,18 +1,20 @@
 from fastapi import APIRouter, HTTPException
 from services.api.models import CreateCompanyRequest
 from infra.db.db_functions import insert_company
+from config.logger import get_logger
+
+logger = get_logger(__name__)
+
 router = APIRouter(prefix="/CreateCompany", tags=["CreateCompany"])
 
 def generate_company_id(name: str) -> str :
-    return name.lower().replace(" ", "_")
-
-print("CREATE COMPANY ROUTER LOADED")
+    return name.lower().replace(" ", "_").strip()
 
 @router.post("")
 def create_company(request: CreateCompanyRequest):
+    logger.info(f"Received request to create company: {request.company_name}")
     company_id = generate_company_id(request.company_name)
-    print("company_id created")
-
+    
     try:
         insert_company(
             company_id=company_id,
@@ -21,7 +23,9 @@ def create_company(request: CreateCompanyRequest):
             company_country=request.company_country,
             company_description=request.company_description
         )
+        logger.info(f"Company created successfully: {company_id}")
     except Exception as e:
+        logger.error(f"Company creation failed for {request.company_name}: {e}")
         raise HTTPException(
             status_code=400,
             detail=f"Company creation failed: {str(e)}"

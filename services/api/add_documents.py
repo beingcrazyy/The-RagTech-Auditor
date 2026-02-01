@@ -1,11 +1,19 @@
 from fastapi import UploadFile, APIRouter, HTTPException, File
-from infra.db.db_functions import insert_document
+from infra.db.db_functions import insert_document, get_company_documents_detailed
 from typing import List
 import os
+from config.logger import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/companies/{company_id}/documents", tags=["documents"])
 
 BASE_DATA_PATH = "data/companies"
+
+@router.get("")
+def list_documents(company_id: str):
+    logger.info(f"Fetching documents for company: {company_id}")
+    return get_company_documents_detailed(company_id)
 
 def ensure_company_dir(company_id : str) -> str:
     path = os.path.join(BASE_DATA_PATH,company_id)
