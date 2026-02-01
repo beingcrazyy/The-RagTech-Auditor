@@ -147,7 +147,7 @@ def get_documents_for_company(company_id : str):
 
     cursor.execute(
         """
-        SELECT document_id
+        SELECT document_id,file_path
         FROM documents
         WHERE company_id = ?
         """,
@@ -157,7 +157,12 @@ def get_documents_for_company(company_id : str):
     rows = cursor.fetchall()
     conn.close()
 
-    return [{"document_id": r[0]} for r in rows]
+    return [{
+            "document_id": r[0],
+            "file_path": r[1]
+        }
+        for r in rows
+    ]
 
 
 def get_audit_status_for_company(company_id: str):

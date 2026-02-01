@@ -8,12 +8,12 @@ from services.extractor.invoice_extractor import extract_invoice
 from core.rules.invoice_validation import validate_invoice
 from core.rules.final_decision import decide_final_status
 from services.audit.audit_summary_generator import generate_audit_summary
-from infra.db.db_functions import finalize_document_audit
+from infra.db.db_functions import finalize_document_audit,update_document_progress
 
 
 import os
 
-BASE_PATH = "data"
+BASE_PATH = "data/companies"
 
 def ingest_node(state: AuditState) -> dict:
     return {
@@ -35,6 +35,8 @@ def detect_file_type_node(state: AuditState) -> dict:
     else:
         file_type = FileType.OTHER
 
+    update_document_progress(state.document_id, 10)
+
     return {
         "audit_trace" : trace,
         "file_type" : file_type
@@ -48,6 +50,8 @@ def parse_pdf_node(state: AuditState) -> dict:
     file_path = state.file_path
 
     result = parse_pdf(file_path)
+
+    update_document_progress(state.document_id, 30)
 
     return {
         "audit_trace" : trace,
@@ -66,6 +70,8 @@ def classify_document_node(state: AuditState) -> dict:
     if doc_type == DocumentType.OTHER :
         doc_type = llm_document_classifier(text)
 
+    update_document_progress(state.document_id, 20)
+
     return {
         "audit_trace": state.audit_trace + ["CLASSIFY_DOCUMENT"],
         "document_type": doc_type
@@ -76,6 +82,7 @@ def extract_invoice_node(state: AuditState) -> dict:
         return {}
 
     result = extract_invoice(state.parsed_content)
+    update_document_progress(state.document_id, 45)
 
     return {
         "audit_trace": state.audit_trace + ["EXTRACT_INVOICE"],
@@ -88,6 +95,8 @@ def validate_invoice_node(state : AuditState) -> dict:
         return {}
     
     validation_results = validate_invoice(state.extraced_data)
+
+    update_document_progress(state.document_id, 60)
 
     return {
         "audit_trace": state.audit_trace + ["VALIDATE_INVOICE"],
@@ -110,6 +119,8 @@ def audit_summery_generator_node(state : AuditState) -> dict:
         status= state.status.value,
         hard_failures=state.validation_results.get("hard_failures", []),
         soft_failures=state.validation_results.get("soft_failures", []))
+    
+    update_document_progress(state.document_id, 79)
 
     return {
         "audit_trace": state.audit_trace + ["AUDIT_SUMMARY_GENERATOR"],
@@ -137,6 +148,7 @@ def persist_results_node(state: AuditState) -> dict:
         hard_failures=state.validation_results.get("hard_failures", []),
         soft_failures=state.validation_results.get("soft_failures", [])
     )
+    update_document_progress(state.document_id, 98)
 
     return {
         "audit_trace": state.audit_trace + ["PERSIST_RESULTS"]
