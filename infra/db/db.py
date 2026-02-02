@@ -1,15 +1,18 @@
 import sqlite3
+from pathlib import Path
 
-DB_PATH = "infra/db/audit.db"
+DB_PATH = Path(__file__).parent / "audit.db"
+SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 def get_connection():
     return sqlite3.connect(DB_PATH, timeout=30)
 
 def init_db():
-    with open("infra/db/schema.sql") as f:
-        schema = f.read()
-
     conn = get_connection()
-    conn.executescript(schema)
+    cursor = conn.cursor()
+
+    with open(SCHEMA_PATH, "r") as f:
+        cursor.executescript(f.read())
+
     conn.commit()
     conn.close()

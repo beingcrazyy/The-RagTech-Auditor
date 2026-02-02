@@ -1,36 +1,31 @@
-CREATE TABLE IF NOT EXISTS companies (
+CREATE TABLE companies (
     company_id TEXT PRIMARY KEY,
     company_name TEXT NOT NULL,
-    company_description TEXT NULL,
+    company_description TEXT,
     company_category TEXT NOT NULL,
     company_country TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS documents (
+CREATE TABLE documents (
     document_id TEXT PRIMARY KEY,
     company_id TEXT NOT NULL,
     file_name TEXT NOT NULL,
     file_path TEXT NOT NULL,
-    file_type TEXT,
-    document_type TEXT,
     uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (company_id) REFERENCES companies(company_id)
-
+    FOREIGN KEY (company_id) REFERENCES companies(company_id),
     UNIQUE(company_id, file_name)
 );
 
-CREATE TABLE IF NOT EXISTS document_audits (
-    document_id TEXT PRIMARY KEY,
-    company_id TEXT 
-    status TEXT,
-    progress INTEGER,
-    audit_summary TEXT,
-    hard_failures TEXT,
-    soft_failures TEXT,
-    started_at DATETIME,
+CREATE TABLE company_audit_history (
+    audit_id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL,
+    status TEXT CHECK(status IN ('RUNNING','COMPLETED')),
+    started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     completed_at DATETIME,
-    FOREIGN KEY (document_id) REFERENCES documents(document_id)
+    details TEXT,
+    report_path TEXT,
+    FOREIGN KEY (company_id) REFERENCES companies(company_id)
 );
 
 
@@ -43,14 +38,32 @@ CREATE TABLE IF NOT EXISTS audit_rules (
     severity TEXT
 );
 
-CREATE TABLE IF NOT EXISTS company_audit_history (
-    audit_id TEXT PRIMARY KEY,
+CREATE TABLE document_audits (
+    document_id TEXT PRIMARY KEY,
     company_id TEXT NOT NULL,
-    status TEXT,
-    started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    audit_id TEXT NOT NULL,
+
+    status TEXT CHECK(status IN ('IN_PROGRESS','VERIFIED','FLAGGED','FAILED')),
+    progress INTEGER CHECK(progress BETWEEN 0 AND 100),
+
+    current_step TEXT,                 -- which node is running (INGEST, PARSE, EXTRACT, VALIDATE, etc.)
+    file_type TEXT,                    -- PDF / IMAGE / OTHER
+    document_type TEXT,                -- INVOICE / BANK / PL
+
+    is_active INTEGER DEFAULT 0,        -- 1 = currently being processed, 0 = idle
+    processing_started_at DATETIME,    -- when this document started processing
+    last_heartbeat_at DATETIME,         -- updated on every node execution
+
+    hard_failures TEXT,
+    soft_failures TEXT,
+    audit_summary TEXT,
+
+    started_at DATETIME,
     completed_at DATETIME,
-    details TEXT,
-    FOREIGN KEY (company_id) REFERENCES companies(company_id)
+
+    FOREIGN KEY (document_id) REFERENCES documents(document_id),
+    FOREIGN KEY (company_id) REFERENCES companies(company_id),
+    FOREIGN KEY (audit_id) REFERENCES company_audit_history(audit_id)
 );
 
 INSERT OR IGNORE INTO audit_rules
