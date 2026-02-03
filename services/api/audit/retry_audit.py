@@ -1,6 +1,6 @@
 from fastapi import HTTPException, APIRouter, BackgroundTasks
 from infra.db.db_functions import reset_document_audit, get_document_audit_details
-from services.audit.runner import run_single_document_audit
+from services.audit_helper.runner import run_single_document_audit
 
 router = APIRouter(
     prefix="/companies/{company_id}/audit",

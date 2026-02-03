@@ -1,14 +1,15 @@
 from core.state import AuditState
 from core.enums.file_type import FileType
 from core.enums.document_type import DocumentType
+from core.enums.document_status import DocumentStatus
 from services.parser.pdf_parser import parse_pdf
-from services.classifiers.heuristics import heuristics_document_classifier
-from services.classifiers.llm_classifiers import llm_document_classifier
+from services.classifiers.heuristics_document_classifier import heuristics_document_classifier
+from services.classifiers.llm_document_classifiers import llm_document_classifier
 from services.extractor.invoice_extractor import extract_invoice
 from core.rules.invoice_validation import validate_invoice
 from core.rules.final_decision import decide_final_status
-from services.audit.audit_summary_generator import generate_audit_summary
-from infra.db.db_functions import finalize_document_audit,update_document_progress
+from services.audit_helper.audit_summary_generator import generate_audit_summary
+from infra.db.db_functions import finalize_document_audit, update_document_state
 from config.logger import get_logger
 
 logger = get_logger(__name__)
@@ -40,7 +41,12 @@ def detect_file_type_node(state: AuditState) -> dict:
         file_type = FileType.OTHER
 
     logger.info(f"[{state.document_id}] Detected file type: {file_type.value}")
-    update_document_progress(state.document_id, 10)
+    update_document_state(
+        document_id=state.document_id,
+        status="IN_PROGRESS",
+        progress=10,
+        current_step="detecting file type..."
+    )
 
     return {
         "audit_trace" : trace,
@@ -58,7 +64,12 @@ def parse_pdf_node(state: AuditState) -> dict:
 
     result = parse_pdf(file_path)
 
-    update_document_progress(state.document_id, 30)
+    update_document_state(
+        document_id=state.document_id,
+        status="IN_PROGRESS",
+        progress=20,
+        current_step="getting data from document"
+    )
 
     return {
         "audit_trace" : trace,
@@ -81,7 +92,12 @@ def classify_document_node(state: AuditState) -> dict:
         doc_type = llm_document_classifier(text)
 
     logger.info(f"[{state.document_id}] Document classified as: {doc_type.value}")
-    update_document_progress(state.document_id, 20)
+    update_document_state(
+        document_id=state.document_id,
+        status="IN_PROGRESS",
+        progress=30,
+        current_step="Classifying document"
+    )
 
     return {
         "audit_trace": state.audit_trace + ["CLASSIFY_DOCUMENT"],
@@ -95,7 +111,12 @@ def extract_invoice_node(state: AuditState) -> dict:
 
     logger.info(f"[{state.document_id}] Extracting invoice data")
     result = extract_invoice(state.parsed_content)
-    update_document_progress(state.document_id, 45)
+    update_document_state(
+        document_id=state.document_id,
+        status="IN_PROGRESS",
+        progress=50,
+        current_step="extracting invoice"
+    )
 
     return {
         "audit_trace": state.audit_trace + ["EXTRACT_INVOICE"],
@@ -110,7 +131,12 @@ def validate_invoice_node(state : AuditState) -> dict:
     logger.info(f"[{state.document_id}] Validating invoice data")
     validation_results = validate_invoice(state.extraced_data)
 
-    update_document_progress(state.document_id, 60)
+    update_document_state(
+        document_id=state.document_id,
+        status="IN_PROGRESS",
+        progress=70,
+        current_step="validating invoice"
+    )
 
     return {
         "audit_trace": state.audit_trace + ["VALIDATE_INVOICE"],
@@ -120,6 +146,12 @@ def validate_invoice_node(state : AuditState) -> dict:
 def final_decision_node(state : AuditState) -> dict:
     logger.info(f"[{state.document_id}] Making final decision")
     final_status = decide_final_status(validation_results= state.validation_results, ml_signals= state.ml_signals)
+    update_document_state(
+        document_id=state.document_id,
+        status="IN_PROGRESS",
+        progress=80,
+        current_step="reviewing further"
+    )
 
     logger.info(f"[{state.document_id}] Final decision: {final_status.value}")
     return {
@@ -135,7 +167,12 @@ def audit_summery_generator_node(state : AuditState) -> dict:
         hard_failures=state.validation_results.get("hard_failures", []),
         soft_failures=state.validation_results.get("soft_failures", []))
     
-    update_document_progress(state.document_id, 79)
+    update_document_state(
+        document_id=state.document_id,
+        status="IN_PROGRESS",
+        progress=90,
+        current_step="generating audit summery"
+    )
 
     return {
         "audit_trace": state.audit_trace + ["AUDIT_SUMMARY_GENERATOR"],
@@ -144,6 +181,14 @@ def audit_summery_generator_node(state : AuditState) -> dict:
 
 def retry_detect_file_type_node(state: AuditState) -> dict:
     logger.info(f"[{state.document_id}] Retrying file type detection (Retry: {state.retry_count + 1})")
+
+    update_document_state(
+        document_id=state.document_id,
+        status="IN_PROGRESS",
+        progress=50,
+        current_step="detecting file type"
+    )
+
     return {
         "audit_trace": state.audit_trace + ["RETRY_DETECT_FILE_TYPE"],
         "retry_count": state.retry_count + 1
@@ -152,6 +197,12 @@ def retry_detect_file_type_node(state: AuditState) -> dict:
 
 def fail_node(state: AuditState) -> dict:
     logger.error(f"[{state.document_id}] Audit failed early")
+    update_document_state(
+        document_id=state.document_id,
+        status= DocumentStatus.FAILED,
+        progress=100,
+        current_step="audit failed"
+    )
     return {
         "audit_trace": state.audit_trace + ["FAILED_EARLY"],
         "status": "FAILED"
@@ -166,7 +217,12 @@ def persist_results_node(state: AuditState) -> dict:
         hard_failures=state.validation_results.get("hard_failures", []),
         soft_failures=state.validation_results.get("soft_failures", [])
     )
-    update_document_progress(state.document_id, 98)
+    update_document_state(
+        document_id=state.document_id,
+        status="IN_PROGRESS",
+        progress=100,
+        current_step="saving results..."
+    )
 
     return {
         "audit_trace": state.audit_trace + ["PERSIST_RESULTS"]

@@ -211,43 +211,6 @@ def create_document_audit(document_id, company_id, audit_id):
     conn.close()
 
 
-def update_document_state(
-    document_id: str,
-    status=None,
-    progress=None,
-    current_step=None,
-    file_type=None,
-    document_type=None,
-    is_active=None
-):
-    fields = []
-    values = []
-
-    for col, val in {
-        "status": status,
-        "progress": progress,
-        "current_step": current_step,
-        "file_type": file_type,
-        "document_type": document_type,
-        "is_active": is_active,
-    }.items():
-        if val is not None:
-            fields.append(f"{col}=?")
-            values.append(val)
-
-    fields.append("last_updated_at=CURRENT_TIMESTAMP")
-    values.append(document_id)
-
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        f"UPDATE document_audits SET {', '.join(fields)} WHERE document_id=?",
-        values
-    )
-    conn.commit()
-    conn.close()
-
-
 def finalize_document_audit(document_id, status, audit_summary, hard_failures, soft_failures):
     conn = get_connection()
     cursor = conn.cursor()
@@ -268,48 +231,6 @@ def finalize_document_audit(document_id, status, audit_summary, hard_failures, s
     )
     conn.commit()
     conn.close()
-
-
-def reset_document_audit(document_id, audit_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        UPDATE document_audits
-        SET status='IN_PROGRESS', progress=0, current_step=NULL,
-            hard_failures=NULL, soft_failures=NULL, audit_summary=NULL,
-            started_at=CURRENT_TIMESTAMP, completed_at=NULL
-        WHERE document_id=? AND audit_id=?
-        """,
-        (document_id, audit_id)
-    )
-    conn.commit()
-    conn.close()
-
-
-def get_live_audit_status(company_id: str, audit_id: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT document_id, status, progress, current_step, is_active
-        FROM document_audits
-        WHERE company_id=? AND audit_id=?
-        """,
-        (company_id, audit_id)
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    return [
-        {
-            "document_id": r[0],
-            "status": r[1],
-            "progress": r[2],
-            "current_step": r[3],
-            "is_active": bool(r[4])
-        }
-        for r in rows
-    ]
 
 
 def get_document_audit_details(company_id: str, document_id: str):
@@ -415,4 +336,81 @@ def get_rule_by_id(rule_id: str):
         "severity": row[1],
         "category": row[2],
         "title": row[3]
+    }
+
+def update_document_state(
+    document_id: str,
+    status: str | None = None,
+    progress: int | None = None,
+    current_step: str | None = None
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    fields = []
+    values = []
+
+    if status is not None:
+        fields.append("status = ?")
+        values.append(status)
+
+    if progress is not None:
+        fields.append("progress = ?")
+        values.append(progress)
+
+    if current_step is not None:
+        fields.append("current_step = ?")
+        values.append(current_step)
+
+    fields.append("last_updated_at = CURRENT_TIMESTAMP")
+    values.append(document_id)
+
+    query = f"""
+        UPDATE document_audits
+        SET {", ".join(fields)}
+        WHERE document_id = ?
+    """
+
+    cursor.execute(query, values)
+    conn.commit()
+    conn.close()
+
+
+def get_company_live_audit_state(company_id: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # total + processed documents
+    cursor.execute(
+        """
+        SELECT
+            COUNT(*) AS total_docs,
+            COUNT(CASE WHEN status IN ('VERIFIED','FAILED') THEN 1 END) AS processed_docs
+        FROM document_audits
+        WHERE company_id=?
+        """,
+        (company_id,)
+    )
+    total_docs, processed_docs = cursor.fetchone()
+
+    # active document (latest)
+    cursor.execute(
+        """
+        SELECT current_step
+        FROM document_audits
+        WHERE company_id=?
+          AND status='IN_PROGRESS'
+        ORDER BY last_updated_at DESC
+        LIMIT 1
+        """,
+        (company_id,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+
+    return {
+        "total_documents": total_docs,
+        "processed_documents": processed_docs,
+        "current_step": row[0] if row else "Finalizing audit...",
+        "status": "IN_PROGRESS" if processed_docs < total_docs else "COMPLETED"
     }

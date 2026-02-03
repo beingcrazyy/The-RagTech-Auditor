@@ -1,6 +1,5 @@
 from fastapi import HTTPException, APIRouter, BackgroundTasks
 from infra.db.db_functions import start_document_audit, get_documents_for_company, create_company_audit_record
-from services.audit.runner import run_company_audit
 from datetime import datetime
 from core.state import AuditState
 from core.graph.intitialize_graph import graph

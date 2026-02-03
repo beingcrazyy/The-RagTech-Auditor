@@ -1,0 +1,209 @@
+# The RegTech Auditor — V1 API Documentation
+
+Welcome to the official documentation for the RegTech Auditor API Version 1. This document provides detailed information about the endpoints, request and response formats, authentication, and error handling.
+
+---
+
+## Base URL
+
+```
+https://api.regtechauditor.com/v1
+```
+
+---
+
+## Authentication
+
+All endpoints require an API key passed in the header:
+
+```
+Authorization: Bearer YOUR_API_KEY
+```
+
+---
+
+## Endpoints
+
+### 1. User Authentication
+
+#### POST /auth/login
+
+Authenticate a user and obtain a JWT token.
+
+**Request:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+**Response:**
+
+```json
+{
+  "token": "jwt.token.here",
+  "expires_in": 3600
+}
+```
+
+---
+
+### 2. Users
+
+#### GET /users
+
+Retrieve a list of users.
+
+**Query Parameters:**
+
+| Parameter | Type   | Description             |
+|-----------|--------|-------------------------|
+| page      | int    | Page number (default 1) |
+| limit     | int    | Items per page (default 20)|
+
+**Response:**
+
+```json
+{
+  "users": [
+    {
+      "id": "user123",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "role": "auditor"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 100
+}
+```
+
+---
+
+### 3. Audit Records
+
+#### POST /audits
+
+Create a new audit record.
+
+**Request:**
+
+```json
+{
+  "title": "Quarterly Compliance Audit",
+  "description": "Audit for Q1 compliance",
+  "date": "2024-05-01",
+  "status": "pending"
+}
+```
+
+**Response:**
+
+```json
+{
+  "id": "audit123",
+  "title": "Quarterly Compliance Audit",
+  "description": "Audit for Q1 compliance",
+  "date": "2024-05-01",
+  "status": "pending",
+  "created_at": "2024-05-02T12:00:00Z"
+}
+```
+
+#### GET /audits/{id}
+
+Retrieve details of a specific audit.
+
+**Response:**
+
+```json
+{
+  "id": "audit123",
+  "title": "Quarterly Compliance Audit",
+  "description": "Audit for Q1 compliance",
+  "date": "2024-05-01",
+  "status": "pending",
+  "created_at": "2024-05-02T12:00:00Z",
+  "updated_at": "2024-05-02T12:00:00Z"
+}
+```
+
+---
+
+### 4. Compliance Checks
+
+#### GET /audits/{id}/checks
+
+List all compliance checks associated with an audit.
+
+**Response:**
+
+```json
+{
+  "checks": [
+    {
+      "id": "check123",
+      "name": "KYC Verification",
+      "status": "completed",
+      "notes": "All documents verified."
+    }
+  ]
+}
+```
+
+#### POST /audits/{id}/checks
+
+Add a new compliance check to an audit.
+
+**Request:**
+
+```json
+{
+  "name": "AML Screening",
+  "status": "pending",
+  "notes": ""
+}
+```
+
+**Response:**
+
+```json
+{
+  "id": "check124",
+  "name": "AML Screening",
+  "status": "pending",
+  "notes": ""
+}
+```
+
+---
+
+## Error Handling
+
+Errors are returned with appropriate HTTP status codes and a JSON body:
+
+```json
+{
+  "error": "Invalid credentials",
+  "code": 401
+}
+```
+
+---
+
+## Rate Limiting
+
+The API enforces rate limiting of 1000 requests per hour. Exceeding this limit will result in a 429 Too Many Requests response.
+
+---
+
+## Contact & Support
+
+For support, please contact support@regtechauditor.com.
+
+---
+
+Next logical step: Postman testing (step-by-step) or UI integration.
