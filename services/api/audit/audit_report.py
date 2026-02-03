@@ -5,9 +5,9 @@ from infra.db.db_functions import (
     get_company_by_id,
     update_company_audit_status
 )
-from services.audit_helper.audit_report_generator import generate_audit_report_llm
+from services.audit_helper.audit_report_generator import generate_audit_report
 from services.audit_helper.pdf_generator import render_audit_report_pdf
-from services.llm.client import LLMClient
+from services.llm.client import get_llm_client
 from datetime import datetime
 from config.logger import get_logger
 
@@ -47,9 +47,9 @@ def generate_audit_report(company_id: str):
     }
 
     # Generate structured report via LLM
-    llm_client = LLMClient()
+    llm_client = get_llm_client()
 
-    report_json = generate_audit_report_llm(
+    report_json = generate_audit_report(
         company=company,
         audit=audit_context,
         document_audits=documents,

@@ -414,3 +414,29 @@ def get_company_live_audit_state(company_id: str):
         "current_step": row[0] if row else "Finalizing audit...",
         "status": "IN_PROGRESS" if processed_docs < total_docs else "COMPLETED"
     }
+
+
+def get_audit_status_for_company(company_id: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            COUNT(*) AS total_documents,
+            COUNT(CASE WHEN status = 'VERIFIED' THEN 1 END) AS verified_documents,
+            COUNT(CASE WHEN status = 'FAILED' THEN 1 END) AS failed_documents
+        FROM document_audits
+        WHERE company_id = ?
+        """,
+        (company_id,)
+    )
+
+    row = cursor.fetchone()
+    conn.close()
+
+    return {
+        "total_documents": row[0],
+        "verified_documents": row[1],
+        "failed_documents": row[2]
+    }

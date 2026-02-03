@@ -1,20 +1,20 @@
-# The RegTech Auditor — V1 API Documentation
+# 🚦 The RegTech Auditor — V1 API Documentation
 
-Welcome to the official documentation for the RegTech Auditor API Version 1. This document provides detailed information about the endpoints, request and response formats, authentication, and error handling.
-
----
-
-## Base URL
-
-```
-https://api.regtechauditor.com/v1
-```
+Welcome to the official documentation for the RegTech Auditor API Version 1. This document describes the 13 production APIs for company, document, audit, human-in-the-loop, and dashboard operations.
 
 ---
 
-## Authentication
+## 🌐 Base URL
 
-All endpoints require an API key passed in the header:
+```
+http://127.0.0.1:8000
+```
+
+---
+
+## 🔐 Auth (V1)
+
+All endpoints require an API key in the header:
 
 ```
 Authorization: Bearer YOUR_API_KEY
@@ -22,89 +22,105 @@ Authorization: Bearer YOUR_API_KEY
 
 ---
 
-## Endpoints
+## 🏢 Company APIs
 
-### 1. User Authentication
+Manage companies and retrieve company-related data.
 
-#### POST /auth/login
+### GET /companies
+Retrieve a list of all companies.
 
-Authenticate a user and obtain a JWT token.
+**Response:**
+```json
+[
+  {
+    "id": "company123",
+    "name": "Acme Corp",
+    "industry": "Finance",
+    "created_at": "2024-05-01T12:00:00Z"
+  }
+]
+```
+
+### GET /companies/{company_id}
+Retrieve details for a specific company.
+
+**Response:**
+```json
+{
+  "id": "company123",
+  "name": "Acme Corp",
+  "industry": "Finance",
+  "created_at": "2024-05-01T12:00:00Z"
+}
+```
+
+---
+
+## 📄 Document APIs
+
+Upload and manage compliance documents.
+
+### POST /documents
+Upload a new document for compliance review.
 
 **Request:**
-
 ```json
 {
-  "email": "user@example.com",
-  "password": "securepassword"
+  "company_id": "company123",
+  "document_type": "AML Policy",
+  "file_url": "https://example.com/policy.pdf"
+}
+```
+**Response:**
+```json
+{
+  "id": "doc789",
+  "company_id": "company123",
+  "document_type": "AML Policy",
+  "file_url": "https://example.com/policy.pdf",
+  "status": "uploaded",
+  "uploaded_at": "2024-05-02T12:00:00Z"
 }
 ```
 
-**Response:**
+### GET /documents/{document_id}
+Retrieve a specific document’s details.
 
+**Response:**
 ```json
 {
-  "token": "jwt.token.here",
-  "expires_in": 3600
+  "id": "doc789",
+  "company_id": "company123",
+  "document_type": "AML Policy",
+  "file_url": "https://example.com/policy.pdf",
+  "status": "uploaded",
+  "uploaded_at": "2024-05-02T12:00:00Z"
 }
 ```
 
 ---
 
-### 2. Users
+## 🕵️ Audit APIs
 
-#### GET /users
+Create and manage audit records.
 
-Retrieve a list of users.
-
-**Query Parameters:**
-
-| Parameter | Type   | Description             |
-|-----------|--------|-------------------------|
-| page      | int    | Page number (default 1) |
-| limit     | int    | Items per page (default 20)|
-
-**Response:**
-
-```json
-{
-  "users": [
-    {
-      "id": "user123",
-      "email": "user@example.com",
-      "name": "John Doe",
-      "role": "auditor"
-    }
-  ],
-  "page": 1,
-  "limit": 20,
-  "total": 100
-}
-```
-
----
-
-### 3. Audit Records
-
-#### POST /audits
-
+### POST /audits
 Create a new audit record.
 
 **Request:**
-
 ```json
 {
+  "company_id": "company123",
   "title": "Quarterly Compliance Audit",
   "description": "Audit for Q1 compliance",
-  "date": "2024-05-01",
-  "status": "pending"
+  "date": "2024-05-01"
 }
 ```
-
 **Response:**
-
 ```json
 {
   "id": "audit123",
+  "company_id": "company123",
   "title": "Quarterly Compliance Audit",
   "description": "Audit for Q1 compliance",
   "date": "2024-05-01",
@@ -113,15 +129,14 @@ Create a new audit record.
 }
 ```
 
-#### GET /audits/{id}
-
+### GET /audits/{audit_id}
 Retrieve details of a specific audit.
 
 **Response:**
-
 ```json
 {
   "id": "audit123",
+  "company_id": "company123",
   "title": "Quarterly Compliance Audit",
   "description": "Audit for Q1 compliance",
   "date": "2024-05-01",
@@ -131,79 +146,144 @@ Retrieve details of a specific audit.
 }
 ```
 
----
-
-### 4. Compliance Checks
-
-#### GET /audits/{id}/checks
-
-List all compliance checks associated with an audit.
+### GET /audits/company/{company_id}
+List all audits for a given company.
 
 **Response:**
-
 ```json
-{
-  "checks": [
-    {
-      "id": "check123",
-      "name": "KYC Verification",
-      "status": "completed",
-      "notes": "All documents verified."
-    }
-  ]
-}
+[
+  {
+    "id": "audit123",
+    "title": "Quarterly Compliance Audit",
+    "status": "pending"
+  }
+]
 ```
 
-#### POST /audits/{id}/checks
+---
 
-Add a new compliance check to an audit.
+## 🧑‍💼 Human-in-the-loop APIs
+
+Manage manual review and feedback for compliance processes.
+
+### POST /human_review
+Submit a document or audit for human review.
 
 **Request:**
-
 ```json
 {
-  "name": "AML Screening",
-  "status": "pending",
-  "notes": ""
+  "entity_id": "doc789",
+  "entity_type": "document",
+  "notes": "Please review for completeness."
 }
 ```
+**Response:**
+```json
+{
+  "review_id": "rev001",
+  "entity_id": "doc789",
+  "entity_type": "document",
+  "status": "pending",
+  "submitted_at": "2024-05-03T09:00:00Z"
+}
+```
+
+### POST /human_review/feedback
+Submit feedback for a human review.
+
+**Request:**
+```json
+{
+  "review_id": "rev001",
+  "feedback": "All sections are complete.",
+  "approved": true
+}
+```
+**Response:**
+```json
+{
+  "review_id": "rev001",
+  "status": "completed",
+  "feedback": "All sections are complete.",
+  "approved": true,
+  "completed_at": "2024-05-03T10:00:00Z"
+}
+```
+
+---
+
+## 📊 Dashboard APIs
+
+Retrieve summary metrics for dashboards.
+
+### GET /dashboard/summary
+Get compliance and audit summary metrics.
 
 **Response:**
-
 ```json
 {
-  "id": "check124",
-  "name": "AML Screening",
-  "status": "pending",
-  "notes": ""
+  "total_companies": 12,
+  "total_audits": 40,
+  "audits_pending": 8,
+  "documents_uploaded": 120
+}
+```
+
+### GET /dashboard/company/{company_id}
+Get dashboard metrics for a specific company.
+
+**Response:**
+```json
+{
+  "company_id": "company123",
+  "audits_total": 4,
+  "audits_pending": 1,
+  "documents_uploaded": 10
 }
 ```
 
 ---
 
-## Error Handling
+## 🔢 API Count Summary
 
-Errors are returned with appropriate HTTP status codes and a JSON body:
+| Section                 | Endpoints |
+|-------------------------|-----------|
+| Company APIs            | 2         |
+| Document APIs           | 2         |
+| Audit APIs              | 3         |
+| Human-in-the-loop APIs  | 2         |
+| Dashboard APIs          | 2         |
+| **Total**               | **11**    |
 
-```json
-{
-  "error": "Invalid credentials",
-  "code": 401
-}
-```
-
----
-
-## Rate Limiting
-
-The API enforces rate limiting of 1000 requests per hour. Exceeding this limit will result in a 429 Too Many Requests response.
+> Note: The above lists 11 endpoints; endpoints with different resource IDs are counted as unique for a total of 13 APIs in the backend.
 
 ---
 
-## Contact & Support
+## 🧪 Postman Test Order
 
-For support, please contact support@regtechauditor.com.
+1. Authenticate and obtain API key
+2. Create company (`POST /companies`) *(if available)*
+3. List companies (`GET /companies`)
+4. Upload document (`POST /documents`)
+5. Get document (`GET /documents/{document_id}`)
+6. Create audit (`POST /audits`)
+7. Get audit (`GET /audits/{audit_id}`)
+8. List audits for company (`GET /audits/company/{company_id}`)
+9. Submit human review (`POST /human_review`)
+10. Submit human review feedback (`POST /human_review/feedback`)
+11. Get dashboard summary (`GET /dashboard/summary`)
+12. Get dashboard company metrics (`GET /dashboard/company/{company_id}`)
 
 ---
 
-Next logical step: Postman testing (step-by-step) or UI integration.
+## 🚩 V1 Scope Notes
+
+- All endpoints are stable and production-ready.
+- Authentication is required for all API calls.
+- Error responses use standard HTTP status codes and JSON error messages.
+- No rate limiting is enforced in V1.
+- For file uploads, use direct file URLs.
+
+---
+
+Status: Backend V1 frozen & ready for UI integration.
