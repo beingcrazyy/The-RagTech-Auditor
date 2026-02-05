@@ -50,7 +50,7 @@ def generate_audit_report(company_id: str):
     llm_client = get_llm_client()
 
     report_json = generate_audit_report(
-        company=company,
+        company=company_id,
         audit=audit_context,
         document_audits=documents,
         llm_client=llm_client

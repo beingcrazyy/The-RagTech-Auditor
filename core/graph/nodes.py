@@ -219,7 +219,7 @@ def persist_results_node(state: AuditState) -> dict:
     )
     update_document_state(
         document_id=state.document_id,
-        status="IN_PROGRESS",
+        status=state.status.value,
         progress=100,
         current_step="saving results..."
     )

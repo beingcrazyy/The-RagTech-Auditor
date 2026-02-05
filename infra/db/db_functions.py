@@ -80,18 +80,36 @@ def get_all_companies():
 # DOCUMENTS
 # -------------------------
 
-def insert_document(document_id, company_id, file_name, file_path):
+def insert_document(
+    document_id: str,
+    company_id: str,
+    file_name: str,
+    file_path: str
+):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        INSERT INTO documents (document_id, company_id, file_name, file_path)
-        VALUES (?, ?, ?, ?)
-        """,
-        (document_id, company_id, file_name, file_path)
-    )
-    conn.commit()
-    conn.close()
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO documents (
+                document_id,
+                company_id,
+                file_name,
+                file_path
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (document_id, company_id, file_name, file_path)
+        )
+        conn.commit()
+        return True
+
+    except sqlite3.IntegrityError:
+        return False
+
+    finally:
+        conn.close()
 
 
 def get_documents_for_company(company_id: str):
@@ -202,8 +220,16 @@ def create_document_audit(document_id, company_id, audit_id):
     cursor.execute(
         """
         INSERT INTO document_audits
-        (document_id, company_id, audit_id, status, progress, started_at, last_updated_at)
-        VALUES (?, ?, ?, 'IN_PROGRESS', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        (document_id, company_id, audit_id, status, progress, started_at, is_active)
+        VALUES (?, ?, ?, 'IN_PROGRESS', 0, CURRENT_TIMESTAMP, 1)
+        ON CONFLICT(document_id)
+        DO UPDATE SET
+            audit_id = excluded.audit_id,
+            status = 'IN_PROGRESS',
+            progress = 0,
+            started_at = CURRENT_TIMESTAMP,
+            completed_at = NULL,
+            is_active = 1
         """,
         (document_id, company_id, audit_id)
     )
@@ -362,7 +388,6 @@ def update_document_state(
         fields.append("current_step = ?")
         values.append(current_step)
 
-    fields.append("last_updated_at = CURRENT_TIMESTAMP")
     values.append(document_id)
 
     query = f"""
@@ -400,7 +425,6 @@ def get_company_live_audit_state(company_id: str):
         FROM document_audits
         WHERE company_id=?
           AND status='IN_PROGRESS'
-        ORDER BY last_updated_at DESC
         LIMIT 1
         """,
         (company_id,)
