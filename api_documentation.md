@@ -275,15 +275,3 @@ Get dashboard metrics for a specific company.
 12. Get dashboard company metrics (`GET /dashboard/company/{company_id}`)
 
 ---
-
-## 🚩 V1 Scope Notes
-
-- All endpoints are stable and production-ready.
-- Authentication is required for all API calls.
-- Error responses use standard HTTP status codes and JSON error messages.
-- No rate limiting is enforced in V1.
-- For file uploads, use direct file URLs.
-
----
-
-Status: Backend V1 frozen & ready for UI integration.
