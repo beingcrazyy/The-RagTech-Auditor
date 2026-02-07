@@ -43,7 +43,8 @@ CREATE TABLE document_audits (
     company_id TEXT NOT NULL,
     audit_id TEXT NOT NULL,
 
-    status TEXT CHECK(status IN ('IN_PROGRESS','VERIFIED','FLAGGED','FAILED')),
+    status TEXT CHECK(status IN ('IN_PROGRESS', 'COMPLETED')),
+    result TEXT CHECK(result IN ('VERIFIED', 'FLAGGED', 'FAILED)),
     progress INTEGER CHECK(progress BETWEEN 0 AND 100),
 
     current_step TEXT,                 -- which node is running (INGEST, PARSE, EXTRACT, VALIDATE, etc.)

@@ -237,27 +237,34 @@ def create_document_audit(document_id, company_id, audit_id):
     conn.close()
 
 
-def finalize_document_audit(document_id, status, audit_summary, hard_failures, soft_failures):
+def finalize_document_audit(
+    document_id: str,
+    audit_summary: str,
+    hard_failures: list,
+    soft_failures: list
+):
     conn = get_connection()
     cursor = conn.cursor()
+
     cursor.execute(
         """
         UPDATE document_audits
-        SET status=?, progress=100, audit_summary=?, hard_failures=?, soft_failures=?,
-            completed_at=CURRENT_TIMESTAMP, is_active=0
-        WHERE document_id=?
+        SET
+            audit_summary = ?,
+            hard_failures = ?,
+            soft_failures = ?
+        WHERE document_id = ?
         """,
         (
-            status,
             audit_summary,
             json.dumps(hard_failures),
             json.dumps(soft_failures),
             document_id
         )
     )
+
     conn.commit()
     conn.close()
-
 
 def get_document_audit_details(company_id: str, document_id: str):
     conn = get_connection()
@@ -366,9 +373,17 @@ def get_rule_by_id(rule_id: str):
 
 def update_document_state(
     document_id: str,
-    status: str | None = None,
-    progress: int | None = None,
-    current_step: str | None = None
+    *,
+    status: str | None = None,              # IN_PROGRESS / COMPLETED
+    result: str | None = None,              # VERIFIED / FLAGGED / FAILED
+    progress: int | None = None,             # 0–100
+    current_step: str | None = None,         # graph node name
+    file_type: str | None = None,            # PDF / IMAGE / OTHER
+    document_type: str | None = None,        # INVOICE / BANK / PL
+    is_active: int | None = None,            # 1 / 0
+    hard_failures: list | None = None,
+    soft_failures: list | None = None,
+    audit_summary: str | None = None,
 ):
     conn = get_connection()
     cursor = conn.cursor()
@@ -376,9 +391,22 @@ def update_document_state(
     fields = []
     values = []
 
+    # ---- core state ----
     if status is not None:
         fields.append("status = ?")
         values.append(status)
+
+        if status == "IN_PROGRESS":
+            fields.append(
+                "processing_started_at = COALESCE(processing_started_at, CURRENT_TIMESTAMP)"
+            )
+
+        if status == "COMPLETED":
+            fields.append("completed_at = CURRENT_TIMESTAMP")
+
+    if result is not None:
+        fields.append("result = ?")
+        values.append(result)
 
     if progress is not None:
         fields.append("progress = ?")
@@ -387,6 +415,40 @@ def update_document_state(
     if current_step is not None:
         fields.append("current_step = ?")
         values.append(current_step)
+
+    # ---- classification metadata ----
+    if file_type is not None:
+        fields.append("file_type = ?")
+        values.append(file_type)
+
+    if document_type is not None:
+        fields.append("document_type = ?")
+        values.append(document_type)
+
+    # ---- execution flags ----
+    if is_active is not None:
+        fields.append("is_active = ?")
+        values.append(is_active)
+
+    # ---- audit output ----
+    if hard_failures is not None:
+        fields.append("hard_failures = ?")
+        values.append(json.dumps(hard_failures))
+
+    if soft_failures is not None:
+        fields.append("soft_failures = ?")
+        values.append(json.dumps(soft_failures))
+
+    if audit_summary is not None:
+        fields.append("audit_summary = ?")
+        values.append(audit_summary)
+
+    # ---- heartbeat (always) ----
+    fields.append("last_heartbeat_at = CURRENT_TIMESTAMP")
+
+    if not fields:
+        conn.close()
+        return
 
     values.append(document_id)
 
@@ -400,43 +462,79 @@ def update_document_state(
     conn.commit()
     conn.close()
 
-
 def get_company_live_audit_state(company_id: str):
     conn = get_connection()
     cursor = conn.cursor()
 
-    # total + processed documents
+    # --- Core progress stats ---
     cursor.execute(
         """
         SELECT
-            COUNT(*) AS total_docs,
-            COUNT(CASE WHEN status IN ('VERIFIED','FAILED') THEN 1 END) AS processed_docs
+            COUNT(*) AS total_documents,
+            COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) AS processed_documents,
+            AVG(progress) AS avg_progress
         FROM document_audits
-        WHERE company_id=?
+        WHERE company_id = ?
         """,
         (company_id,)
     )
-    total_docs, processed_docs = cursor.fetchone()
 
-    # active document (latest)
+    total_docs, processed_docs, avg_progress = cursor.fetchone()
+
+    total_docs = total_docs or 0
+    processed_docs = processed_docs or 0
+    avg_progress = float(avg_progress) if avg_progress is not None else 0.0
+
+    # --- Active document ---
     cursor.execute(
         """
-        SELECT current_step
-        FROM document_audits
-        WHERE company_id=?
-          AND status='IN_PROGRESS'
+        SELECT
+            d.file_name,
+            da.current_step,
+            da.progress
+        FROM document_audits da
+        JOIN documents d ON d.document_id = da.document_id
+        WHERE da.company_id = ?
+          AND da.is_active = 1
+        ORDER BY da.processing_started_at DESC
         LIMIT 1
         """,
         (company_id,)
     )
+
     row = cursor.fetchone()
     conn.close()
+
+    active_doc = None
+    current_step = None
+    current_progress = None
+
+    if row:
+        active_doc, current_step, current_progress = row
+
+    status = "IN_PROGRESS" if active_doc else "COMPLETED"
+
+    # --- UI message ---
+    if total_docs == 0:
+        message = "No documents available for audit."
+
+    elif status == "COMPLETED":
+        message = f"Audit completed for all {total_docs} documents."
+
+    else:
+        message = (
+            f"Processing documents ({processed_docs + 1}/{total_docs}) — "
+            f"{active_doc} "
+            f"({current_progress or 0}% completed, step: {current_step})"
+        )
 
     return {
         "total_documents": total_docs,
         "processed_documents": processed_docs,
-        "current_step": row[0] if row else "Finalizing audit...",
-        "status": "IN_PROGRESS" if processed_docs < total_docs else "COMPLETED"
+        "active_document_name": active_doc,
+        "progress_avg": avg_progress,
+        "message": message,
+        "status": status
     }
 
 

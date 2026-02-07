@@ -1,7 +1,8 @@
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 from enum import Enum
-from core.enums.document_status import DocumentStatus
+from core.enums.audit_status import AuditStatus
+from core.enums.document_results import DocumentResults
 
 class AuditState(BaseModel):
     company_id : Optional[str] = None
@@ -20,9 +21,9 @@ class AuditState(BaseModel):
     ml_signals : Dict[str, Any] = Field(default_factory= dict)
 
     retry_count : int = 0
-    status : Optional[DocumentStatus] = None
+    status : Optional[AuditStatus] = None
+    results : Optional[DocumentResults] = None
     audit_summary : Optional[str] = None
-
 
     audit_trace : List[str] = Field(default_factory=list)
 

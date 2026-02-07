@@ -5,7 +5,7 @@ DB_PATH = Path(__file__).parent / "audit.db"
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 def get_connection():
-    return sqlite3.connect(DB_PATH, timeout=30)
+    return sqlite3.connect(DB_PATH, timeout=30, check_same_thread=False)
 
 def init_db():
     conn = get_connection()

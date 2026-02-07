@@ -11,10 +11,12 @@ from core.graph.nodes import (
     final_decision_node,
     audit_summery_generator_node,
     fail_node,
-    persist_results_node
+    persist_results_node,
+    handle_non_invoice_node
 )
 
 from core.enums.file_type import FileType
+from core.enums.document_type import DocumentType
 
 def build_graph():
     graph = StateGraph(AuditState)
@@ -24,6 +26,7 @@ def build_graph():
     graph.add_node("RETRY_DETECT_FILE_TYPE",retry_detect_file_type_node)
     graph.add_node("PARSE_PDF", parse_pdf_node)
     graph.add_node("CLASSIFY_DOCUMENT", classify_document_node)
+    graph.add_node("HANDLE_NON_INVOICE", handle_non_invoice_node)
     graph.add_node("EXTRACT_INVOICE", extract_invoice_node)
     graph.add_node("VALIDATE_INVOICE", validate_invoice_node)
     graph.add_node("FINAL_DECISION", final_decision_node)
@@ -44,7 +47,14 @@ def build_graph():
         })
     graph.add_edge("RETRY_DETECT_FILE_TYPE", "DETECT_FILE_TYPE")
     graph.add_edge("PARSE_PDF", "CLASSIFY_DOCUMENT")
-    graph.add_edge("CLASSIFY_DOCUMENT", "EXTRACT_INVOICE")
+    graph.add_conditional_edges("CLASSIFY_DOCUMENT",
+        route_after_document_classification,
+        {
+            "INVOICE": "EXTRACT_INVOICE",
+            "BANK_STATEMENT": "HANDLE_NON_INVOICE",
+            "P_AND_L": "HANDLE_NON_INVOICE",
+            "OTHER": "HANDLE_NON_INVOICE"
+        })
     graph.add_edge("EXTRACT_INVOICE", "VALIDATE_INVOICE")
     graph.add_edge("VALIDATE_INVOICE", "FINAL_DECISION")
     graph.add_edge("FINAL_DECISION", "AUDIT_SUMMARY")
@@ -58,3 +68,12 @@ def route_after_file_detection(state : dict) -> str:
     if state.file_type ==  FileType.OTHER:
         return "FAIL"
     return "PARSE_PDF"
+
+def route_after_document_classification(state: AuditState) -> str:
+    if state.document_type == DocumentType.INVOICE:
+        return "INVOICE"
+    if state.document_type == DocumentType.BANK_STATEMENT:
+        return "BANK_STATEMENT"
+    if state.document_type == DocumentType.P_AND_L:
+        return "P_AND_L"
+    return "OTHER"

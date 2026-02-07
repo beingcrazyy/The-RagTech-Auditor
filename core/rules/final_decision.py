@@ -1,18 +1,18 @@
-from core.enums.document_status import DocumentStatus
+from core.enums.document_results import DocumentResults
 
-def decide_final_status(validation_results : dict, ml_signals : dict | None = None) -> DocumentStatus:
+def decide_final_status(validation_results : dict, ml_signals : dict | None = None) -> DocumentResults:
     
     hard = validation_results.get("hard_failures", [])
     soft = validation_results.get("soft_failures", [])
 
     if hard:
-        return DocumentStatus.FAILED
+        return DocumentResults.FAILED
     if soft:
-        return DocumentStatus.FLAGGED
+        return DocumentResults.FLAGGED
     
     if ml_signals:
         risk = ml_signals.get("risk_score", 0)
         if risk > 0.7 :
-            return DocumentStatus.FLAGGED
+            return DocumentResults.FLAGGED
 
-    return DocumentStatus.VERIFIED
+    return DocumentResults.VERIFIED

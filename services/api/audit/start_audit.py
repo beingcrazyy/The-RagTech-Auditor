@@ -1,5 +1,5 @@
 from fastapi import HTTPException, APIRouter, BackgroundTasks
-from infra.db.db_functions import create_document_audit, get_documents_for_company, create_company_audit_record
+from infra.db.db_functions import create_document_audit, get_documents_for_company, create_company_audit_record, update_document_state
 from datetime import datetime
 from core.state import AuditState
 from core.graph.intitialize_graph import graph
@@ -40,6 +40,14 @@ def start_audit(company_id: str, background_tasks: BackgroundTasks) -> dict:
 
     audit_id = f"audit_{uuid.uuid4().hex[:8]}"
     create_company_audit_record(audit_id, company_id)
+
+    for doc in docs:
+        update_document_state(
+            document_id=doc["document_id"],
+            status="IN_PROGRESS",
+            progress=0,
+            is_active=0,
+        )
 
     background_tasks.add_task(
         run_audit_background,
