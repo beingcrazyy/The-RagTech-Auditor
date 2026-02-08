@@ -1,4 +1,4 @@
-from infra.db.db_functions import insert_company
+from infra.db.db_functions.company_apis_functions import insert_company
 
 insert_company(
     company_id="alpha_fintech",

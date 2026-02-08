@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from services.api.models import CreateCompanyRequest
-from infra.db.db_functions import insert_company
+from infra.db.db_functions.company_apis_functions import insert_company
 from config.logger import get_logger
 
 logger = get_logger(__name__)

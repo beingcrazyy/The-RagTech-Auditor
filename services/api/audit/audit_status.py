@@ -1,5 +1,5 @@
 from fastapi import HTTPException, APIRouter
-from infra.db.db_functions import get_audit_status_for_company
+from infra.db.db_functions.audit_apis_functions import get_audit_status_for_company
 from core.enums.audit_status import AuditStatus
 from core.enums.document_results import DocumentResults
 

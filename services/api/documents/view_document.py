@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
-from infra.db.db_functions import get_document_file_path
+from infra.db.db_functions.document_apis_functions import get_document_file_path
 import os
 from config.logger import get_logger
 

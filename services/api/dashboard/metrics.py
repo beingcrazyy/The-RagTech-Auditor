@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from infra.db.db_functions import get_dashboard_metrics
+from infra.db.db_functions.dashboard_apis_functions import get_dashboard_metrics
 from config.logger import get_logger
 
 logger = get_logger(__name__)

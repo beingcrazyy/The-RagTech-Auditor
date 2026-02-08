@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional
-from infra.db.db_functions import get_rule_by_id
+from infra.db.db_functions.audit_apis_functions import get_rule_by_id
 
 def emit(rule_id: str, message: str, evidence_ref: str, confidence: float = 1.0) -> Dict:
     return {

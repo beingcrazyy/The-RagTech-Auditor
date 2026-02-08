@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from infra.db.db_functions import get_document_audit_details
+from infra.db.db_functions.audit_apis_functions import get_document_audit_details
 
 router = APIRouter(
     prefix="/companies/{company_id}/audit",

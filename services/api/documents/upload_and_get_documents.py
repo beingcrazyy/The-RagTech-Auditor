@@ -1,5 +1,5 @@
 from fastapi import UploadFile, APIRouter, HTTPException, File
-from infra.db.db_functions import insert_document, get_documents_for_company
+from infra.db.db_functions.document_apis_functions import insert_document, get_documents_for_company
 from typing import List
 import os
 from config.logger import get_logger

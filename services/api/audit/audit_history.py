@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from infra.db.db_functions import get_company_audit_history
+from infra.db.db_functions.audit_apis_functions import get_company_audit_history
 from config.logger import get_logger
 
 logger = get_logger(__name__)

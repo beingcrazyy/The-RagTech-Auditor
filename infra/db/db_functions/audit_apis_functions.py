@@ -1,139 +1,9 @@
 from infra.db.db import get_connection
 import sqlite3
 import json
-from datetime import datetime
 from config.logger import get_logger
 
 logger = get_logger(__name__)
-
-# -------------------------
-# COMPANY
-# -------------------------
-
-def insert_company(company_id, company_name, company_category, company_country, company_description):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        INSERT INTO companies (
-            company_id, company_name, company_category, company_country, company_description
-        ) VALUES (?, ?, ?, ?, ?)
-        """,
-        (company_id, company_name, company_category, company_country, company_description)
-    )
-    conn.commit()
-    conn.close()
-
-
-def get_company_by_id(company_id: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT company_id, company_name, company_category, company_country, company_description FROM companies WHERE company_id = ?",
-        (company_id,)
-    )
-    row = cursor.fetchone()
-    conn.close()
-    return dict(zip(
-        ["company_id","company_name","company_category","company_country","company_description"],
-        row
-    )) if row else None
-
-
-def get_all_companies():
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT
-            c.company_id,
-            c.company_name,
-            c.company_category,
-            c.company_country,
-            COUNT(d.document_id) AS total_documents,
-            COUNT(CASE WHEN da.status='VERIFIED' THEN 1 END),
-            COUNT(CASE WHEN da.status='FLAGGED' THEN 1 END),
-            COUNT(CASE WHEN da.status='FAILED' THEN 1 END)
-        FROM companies c
-        LEFT JOIN documents d ON c.company_id = d.company_id
-        LEFT JOIN document_audits da ON d.document_id = da.document_id
-        GROUP BY c.company_id
-        """
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    return [
-        {
-            "company_id": r[0],
-            "company_name": r[1],
-            "company_category": r[2],
-            "company_country": r[3],
-            "total_documents": r[4],
-            "verified_documents": r[5],
-            "flagged_documents": r[6],
-            "failed_documents": r[7],
-        }
-        for r in rows
-    ]
-
-# -------------------------
-# DOCUMENTS
-# -------------------------
-
-def insert_document(
-    document_id: str,
-    company_id: str,
-    file_name: str,
-    file_path: str
-):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute(
-            """
-            INSERT INTO documents (
-                document_id,
-                company_id,
-                file_name,
-                file_path
-            )
-            VALUES (?, ?, ?, ?)
-            """,
-            (document_id, company_id, file_name, file_path)
-        )
-        conn.commit()
-        return True
-
-    except sqlite3.IntegrityError:
-        return False
-
-    finally:
-        conn.close()
-
-
-def get_documents_for_company(company_id: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT document_id, file_path FROM documents WHERE company_id = ?",
-        (company_id,)
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    return [{"document_id": r[0], "file_path": r[1]} for r in rows]
-
-
-def get_document_file_path(company_id: str, document_id: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT file_path FROM documents WHERE company_id=? AND document_id=?",
-        (company_id, document_id)
-    )
-    row = cursor.fetchone()
-    conn.close()
-    return row[0] if row else None
 
 # -------------------------
 # COMPANY AUDIT HISTORY
@@ -299,59 +169,42 @@ def get_document_audit_details(company_id: str, document_id: str):
         "soft_failures": json.loads(row[4]) if row[4] else []
     } if row else None
 
-# -------------------------
-# DASHBOARD / REPORTING
-# -------------------------
-
-def get_dashboard_metrics():
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT
-            (SELECT COUNT(*) FROM companies),
-            (SELECT COUNT(*) FROM documents),
-            (SELECT COUNT(*) FROM document_audits WHERE status='FLAGGED'),
-            (SELECT COUNT(*) FROM document_audits WHERE status='FAILED'),
-            (SELECT COUNT(*) FROM company_audit_history WHERE status='RUNNING')
-        """
-    )
-    row = cursor.fetchone()
-    conn.close()
-    return {
-        "total_companies": row[0],
-        "total_documents": row[1],
-        "flagged_documents": row[2],
-        "failed_documents": row[3],
-        "running_audits": row[4],
-    }
-
 
 def get_document_audits_for_audit(audit_id: str):
     conn = get_connection()
     cursor = conn.cursor()
+
     cursor.execute(
         """
-        SELECT document_id, document_type, file_type, result, audit_summary, hard_failures, soft_failures
+        SELECT
+            document_id,
+            document_type,
+            result,
+            hard_failures,
+            soft_failures,
+            audit_summary
         FROM document_audits
-        WHERE audit_id=?
+        WHERE audit_id = ?
         """,
         (audit_id,)
     )
+
     rows = cursor.fetchall()
     conn.close()
-    return [
-        {
-            "document_id": r[0],
-            "document_type": r[1],
-            "file_type": r[2],
-            "result": r[3],
-            "audit_summary": r[4],
-            "hard_failures": json.loads(r[5]) if r[5] else [],
-            "soft_failures": json.loads(r[6]) if r[6] else []
-        }
-        for r in rows
-    ]
+
+    documents = []
+
+    for row in rows:
+        documents.append({
+            "document_id": row[0],
+            "document_type": row[1],
+            "result": row[2],  # VERIFIED / FLAGGED / FAILED
+            "hard_failures": json.loads(row[3]) if row[3] else [],
+            "soft_failures": json.loads(row[4]) if row[4] else [],
+            "audit_summary": row[5]
+        })
+
+    return documents
 
 
 def override_document_status(document_id: str, status: str, comment: str):
@@ -385,101 +238,6 @@ def get_rule_by_id(rule_id: str):
         "title": row[3]
     }
 
-def update_document_state(
-    document_id: str,
-    *,
-    status: str | None = None,              # IN_PROGRESS / COMPLETED
-    audit_id: str | None = None,
-    result: str | None = None,              # VERIFIED / FLAGGED / FAILED
-    progress: int | None = None,             # 0–100
-    current_step: str | None = None,         # graph node name
-    file_type: str | None = None,            # PDF / IMAGE / OTHER
-    document_type: str | None = None,        # INVOICE / BANK / PL
-    is_active: int | None = None,            # 1 / 0
-    hard_failures: list | None = None,
-    soft_failures: list | None = None,
-    audit_summary: str | None = None,
-):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    fields = []
-    values = []
-
-    # ---- core state ----
-    if status is not None:
-        fields.append("status = ?")
-        values.append(status)
-
-        if status == "IN_PROGRESS":
-            fields.append(
-                "processing_started_at = COALESCE(processing_started_at, CURRENT_TIMESTAMP)"
-            )
-
-        if status == "COMPLETED":
-            fields.append("completed_at = CURRENT_TIMESTAMP")
-
-    if audit_id is not None:
-        fields.append("audit_id = ?")
-        values.append(audit_id)
-
-    if result is not None:
-        fields.append("result = ?")
-        values.append(result)
-
-    if progress is not None:
-        fields.append("progress = ?")
-        values.append(progress)
-
-    if current_step is not None:
-        fields.append("current_step = ?")
-        values.append(current_step)
-
-    # ---- classification metadata ----
-    if file_type is not None:
-        fields.append("file_type = ?")
-        values.append(file_type)
-
-    if document_type is not None:
-        fields.append("document_type = ?")
-        values.append(document_type)
-
-    # ---- execution flags ----
-    if is_active is not None:
-        fields.append("is_active = ?")
-        values.append(is_active)
-
-    # ---- audit output ----
-    if hard_failures is not None:
-        fields.append("hard_failures = ?")
-        values.append(json.dumps(hard_failures))
-
-    if soft_failures is not None:
-        fields.append("soft_failures = ?")
-        values.append(json.dumps(soft_failures))
-
-    if audit_summary is not None:
-        fields.append("audit_summary = ?")
-        values.append(audit_summary)
-
-    # ---- heartbeat (always) ----
-    fields.append("last_heartbeat_at = CURRENT_TIMESTAMP")
-
-    if not fields:
-        conn.close()
-        return
-
-    values.append(document_id)
-
-    query = f"""
-        UPDATE document_audits
-        SET {", ".join(fields)}
-        WHERE document_id = ?
-    """
-
-    cursor.execute(query, values)
-    conn.commit()
-    conn.close()
 
 def get_company_live_audit_state(company_id: str):
     conn = get_connection()
@@ -585,12 +343,9 @@ def get_audit_status_for_company(company_id: str):
     }
 
 
-
-
 # -------------------------
 # AUDIT HISTORY APPEND
 # -------------------------
-
 
 
 def try_finalize_company_audit(document_id: str) -> None:
@@ -684,9 +439,6 @@ def try_finalize_company_audit(document_id: str) -> None:
     conn.close()
 
 
-
-
-
 def count_remaining_documents_for_audit(audit_id: str) -> int:
         """
         Returns number of documents still being processed for a given audit.
@@ -709,43 +461,15 @@ def count_remaining_documents_for_audit(audit_id: str) -> int:
         conn.close()
         return remaining
 
-
-
-
-
-def get_document_audits_for_audit(audit_id: str):
+def reset_document_audit(company_id: str, document_id: str):
     conn = get_connection()
     cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        SELECT
-            document_id,
-            document_type,
-            result,
-            hard_failures,
-            soft_failures,
-            audit_summary
-        FROM document_audits
-        WHERE audit_id = ?
-        """,
-        (audit_id,)
-    )
-
-    rows = cursor.fetchall()
+    cursor.execute("""
+        UPDATE document_audits
+        SET status='IN_PROGRESS', progress=0, result=NULL,
+            hard_failures=NULL, soft_failures=NULL, audit_summary=NULL,
+            completed_at=NULL, processing_started_at=CURRENT_TIMESTAMP
+        WHERE company_id=? AND document_id=?
+    """, (company_id, document_id))
+    conn.commit()
     conn.close()
-
-    documents = []
-
-    for row in rows:
-        documents.append({
-            "document_id": row[0],
-            "document_type": row[1],
-            "result": row[2],  # VERIFIED / FLAGGED / FAILED
-            "hard_failures": json.loads(row[3]) if row[3] else [],
-            "soft_failures": json.loads(row[4]) if row[4] else [],
-            "audit_summary": row[5]
-        })
-
-    return documents
-

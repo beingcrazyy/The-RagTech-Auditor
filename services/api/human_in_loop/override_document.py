@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from infra.db.db_functions import override_document_status
+from infra.db.db_functions.audit_apis_functions import override_document_status
 from config.logger import get_logger
 
 logger = get_logger(__name__)

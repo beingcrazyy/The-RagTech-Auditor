@@ -11,18 +11,19 @@ from services.extractor.invoice_extractor import extract_invoice
 from core.rules.invoice_validation import validate_invoice
 from core.rules.final_decision import decide_final_status
 from services.audit_helper.audit_summary_generator import generate_audit_summary
-from infra.db.db_functions import finalize_document_audit, update_document_state, try_finalize_company_audit
+from infra.db.db_functions.audit_apis_functions import finalize_document_audit, try_finalize_company_audit
+from infra.db.db_functions.document_apis_functions import update_document_state
 from config.logger import get_logger
 
 
-from infra.db.db_functions import (
+from infra.db.db_functions.audit_apis_functions import (
     get_latest_company_audit,
     get_document_audits_for_audit,
-    get_company_by_id,
     update_company_audit_status,
     count_remaining_documents_for_audit,
     get_document_audits_for_audit
 )
+from infra.db.db_functions.company_apis_functions import get_company_by_id
 
 from services.audit_helper.aggregate_functions import aggregate_company_metrics, aggregate_document_results, aggregate_rule_impact
 from services.audit_helper.audit_report_generator import generate_text_audit_report

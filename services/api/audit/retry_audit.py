@@ -1,6 +1,6 @@
 from fastapi import HTTPException, APIRouter, BackgroundTasks
-from infra.db.db_functions import reset_document_audit, get_document_audit_details
-from services.audit_helper.runner import run_single_document_audit
+from infra.db.db_functions.audit_apis_functions import reset_document_audit, get_document_audit_details
+# from services.audit_helper.runner import run_single_document_audit
 
 router = APIRouter(
     prefix="/companies/{company_id}/audit",
@@ -19,11 +19,13 @@ def retry_audit(company_id : str, document_id : str, background_tasks : Backgrou
     
     reset_document_audit(company_id, document_id)
 
-    background_tasks.add_task(
-        run_single_document_audit,
-        company_id,
-        document_id
-    )
+    # background_tasks.add_task(
+    #     run_single_document_audit,
+    #     company_id,
+    #     document_id
+    # )
+    # TODO: run_single_document_audit is missing in codebase
+    raise HTTPException(status_code=501, detail="Retry functionality not implemented due to missing dependency")
 
     return {
         "company_id": company_id,
