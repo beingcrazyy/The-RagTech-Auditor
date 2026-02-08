@@ -1,3 +1,12 @@
+-- Drop tables in reverse dependency order
+DROP TABLE IF EXISTS document_audits;
+DROP TABLE IF EXISTS audit_rules;
+DROP TABLE IF EXISTS company_audit_history;
+DROP TABLE IF EXISTS documents;
+DROP TABLE IF EXISTS companies;
+
+-- Create tables in dependency order
+
 CREATE TABLE companies (
     company_id TEXT PRIMARY KEY,
     company_name TEXT NOT NULL,
@@ -20,16 +29,25 @@ CREATE TABLE documents (
 CREATE TABLE company_audit_history (
     audit_id TEXT PRIMARY KEY,
     company_id TEXT NOT NULL,
-    status TEXT CHECK(status IN ('RUNNING','COMPLETED')),
-    started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    completed_at DATETIME,
-    details TEXT,
+
+    status TEXT CHECK(status IN ('RUNNING', 'COMPLETED')) NOT NULL,
+
+    total_documents INTEGER DEFAULT 0,
+    processed_documents INTEGER DEFAULT 0,
+
+    verified_documents INTEGER DEFAULT 0,
+    flagged_documents INTEGER DEFAULT 0,
+    failed_documents INTEGER DEFAULT 0,
+    out_of_scope_documents INTEGER DEFAULT 0,
+
+    started_at DATETIME,
+    completed_at DATETIME, 
     report_path TEXT,
+
     FOREIGN KEY (company_id) REFERENCES companies(company_id)
 );
 
-
-CREATE TABLE IF NOT EXISTS audit_rules (
+CREATE TABLE audit_rules (
     rule_id TEXT PRIMARY KEY,
     framework TEXT,
     category TEXT,
@@ -43,17 +61,17 @@ CREATE TABLE document_audits (
     company_id TEXT NOT NULL,
     audit_id TEXT NOT NULL,
 
-    status TEXT CHECK(status IN ('IN_PROGRESS', 'COMPLETED')),
-    result TEXT CHECK(result IN ('VERIFIED', 'FLAGGED', 'FAILED)),
+    status TEXT CHECK(status IN ('IN_PROGRESS','COMPLETED')),
+    result TEXT CHECK(result IN ('VERIFIED','FLAGGED','FAILED')),
     progress INTEGER CHECK(progress BETWEEN 0 AND 100),
 
-    current_step TEXT,                 -- which node is running (INGEST, PARSE, EXTRACT, VALIDATE, etc.)
-    file_type TEXT,                    -- PDF / IMAGE / OTHER
-    document_type TEXT,                -- INVOICE / BANK / PL
+    current_step TEXT,                 -- which node is running
+    file_type TEXT,
+    document_type TEXT,
 
-    is_active INTEGER DEFAULT 0,        -- 1 = currently being processed, 0 = idle
-    processing_started_at DATETIME,    -- when this document started processing
-    last_heartbeat_at DATETIME,         -- updated on every node execution
+    is_active INTEGER DEFAULT 0,
+    processing_started_at DATETIME,
+    last_heartbeat_at DATETIME,
 
     hard_failures TEXT,
     soft_failures TEXT,
@@ -67,7 +85,9 @@ CREATE TABLE document_audits (
     FOREIGN KEY (audit_id) REFERENCES company_audit_history(audit_id)
 );
 
-INSERT OR IGNORE INTO audit_rules
+
+-- Seed Rules
+INSERT INTO audit_rules
 (rule_id, framework, category, title, description, severity)
 VALUES
 -- Structural
