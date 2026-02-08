@@ -35,6 +35,10 @@ def insert_document(
         return True
 
     except sqlite3.IntegrityError:
+        logger.warning("Duplicate document upload attempt for %s", file_name)
+        return False
+    except Exception as e:
+        logger.error("Error inserting document: %s", e, exc_info=True)
         return False
 
     finally:
@@ -42,27 +46,35 @@ def insert_document(
 
 
 def get_documents_for_company(company_id: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT document_id, file_path FROM documents WHERE company_id = ?",
-        (company_id,)
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    return [{"document_id": r[0], "file_path": r[1]} for r in rows]
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT document_id, file_path FROM documents WHERE company_id = ?",
+            (company_id,)
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return [{"document_id": r[0], "file_path": r[1]} for r in rows]
+    except Exception as e:
+        logger.error("Error getting documents for company: %s", e, exc_info=True)
+        return []
 
 
 def get_document_file_path(company_id: str, document_id: str):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT file_path FROM documents WHERE company_id=? AND document_id=?",
-        (company_id, document_id)
-    )
-    row = cursor.fetchone()
-    conn.close()
-    return row[0] if row else None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT file_path FROM documents WHERE company_id=? AND document_id=?",
+            (company_id, document_id)
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else None
+    except Exception as e:
+        logger.error("Error getting document file path: %s", e, exc_info=True)
+        return None
 
 
 def update_document_state(
@@ -157,6 +169,10 @@ def update_document_state(
         WHERE document_id = ?
     """
 
-    cursor.execute(query, values)
-    conn.commit()
-    conn.close()
+    try:
+        cursor.execute(query, values)
+        conn.commit()
+    except Exception as e:
+        logger.error("Error updating document state: %s", e, exc_info=True)
+    finally:
+        conn.close()

@@ -38,24 +38,28 @@ async def upload_documents(company_id : str, files : List[UploadFile] = File(...
         document_id = create_document_id(file.filename)
         filepath = os.path.join(company_dir, document_id)
 
-        content = await file.read()
-        with open (filepath, "wb") as f:
-            f.write(content)
+        try:
+            content = await file.read()
+            with open (filepath, "wb") as f:
+                f.write(content)
 
-        inserted_flag = insert_document(
-            document_id=document_id,
-            company_id= company_id,
-            file_name=file.filename,
-            file_path=filepath
-        )
-        
-        if inserted_flag:
-            inserted.append({
-                "document_id": document_id,
-                "file_name": file.filename
-            })
-        else:
-            duplicate+=1
+            inserted_flag = insert_document(
+                document_id=document_id,
+                company_id= company_id,
+                file_name=file.filename,
+                file_path=filepath
+            )
+            
+            if inserted_flag:
+                inserted.append({
+                    "document_id": document_id,
+                    "file_name": file.filename
+                })
+            else:
+                duplicate+=1
+        except Exception as e:
+            logger.error(f"Failed to process file {file.filename}: {e}", exc_info=True)
+            continue
 
     return {
         "company_id" : company_id,

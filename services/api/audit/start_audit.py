@@ -40,7 +40,8 @@ def start_audit(company_id: str, background_tasks: BackgroundTasks) -> dict:
         raise HTTPException(status_code=400, detail="No documents found")
 
     audit_id = f"audit_{uuid.uuid4().hex[:8]}"
-    create_company_audit_record(audit_id, company_id)
+    if not create_company_audit_record(audit_id, company_id):
+        raise HTTPException(status_code=500, detail="Failed to initialize audit record")
 
     for doc in docs:
         update_document_state(

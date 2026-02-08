@@ -9,4 +9,9 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 @router.get("/metrics")
 def dashboard_metrics():
     logger.info("Fetching dashboard metrics")
-    return get_dashboard_metrics()
+    try:
+        return get_dashboard_metrics()
+    except Exception as e:
+        logger.error("Error fetching metrics: %s", e, exc_info=True)
+        # return empty state or raise 500
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -16,13 +16,15 @@ def create_company(request: CreateCompanyRequest):
     company_id = generate_company_id(request.company_name)
 
     try:
-        insert_company(
+        result = insert_company(
             company_id=company_id,
             company_name=request.company_name,
             company_category=request.company_category,
             company_country=request.company_country,
             company_description=request.company_description
         )
+        if not result:
+             raise HTTPException(status_code=500, detail="Database insertion failed")
         logger.info(f"Company created successfully: {company_id}")
     except Exception as e:
         logger.error(f"Company creation failed for {request.company_name}: {e}")
