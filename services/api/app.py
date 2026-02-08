@@ -17,7 +17,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from services.api.documents.view_document import router as view_document_router
 from services.api.human_in_loop.override_document import router as override_router
 from services.api.dashboard.metrics import router as dashboard_router
-from services.api.audit.audit_report import router as audit_report_router
 from services.api.audit.live_status import router as live_status_router
 
 setup_logging()
@@ -61,7 +60,6 @@ app.include_router(start_audit_router)
 app.include_router(live_status_router)
 app.include_router(audit_status_router)
 app.include_router(audit_history_router)
-app.include_router(audit_report_router)
 
 
 #-------------------------------------------------------------------------------------------------

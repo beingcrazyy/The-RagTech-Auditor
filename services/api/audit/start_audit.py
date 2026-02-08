@@ -43,6 +43,7 @@ def start_audit(company_id: str, background_tasks: BackgroundTasks) -> dict:
 
     for doc in docs:
         update_document_state(
+            audit_id = audit_id,
             document_id=doc["document_id"],
             status="IN_PROGRESS",
             progress=0,

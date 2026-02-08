@@ -150,20 +150,30 @@ def create_company_audit_record(audit_id: str, company_id: str):
     conn.close()
 
 
-def update_company_audit_status(audit_id: str, status: str, details=None, report_path=None):
+def update_company_audit_status(audit_id: str, status: str, report_path=None):
     conn = get_connection()
     cursor = conn.cursor()
+
     cursor.execute(
         """
         UPDATE company_audit_history
-        SET status=?,
-            completed_at = CASE WHEN ?='COMPLETED' THEN CURRENT_TIMESTAMP ELSE completed_at END,
-            details=?,
-            report_path=?
-        WHERE audit_id=?
+        SET
+            status = ?,
+            completed_at = CASE
+                WHEN ? = 'COMPLETED' THEN CURRENT_TIMESTAMP
+                ELSE completed_at
+            END,
+            report_path = ?
+        WHERE audit_id = ?
         """,
-        (status, status, details, report_path, audit_id)
+        (
+            status,        # for status = ?
+            status,        # for CASE WHEN ? = 'COMPLETED'
+            report_path,   # report_path = ?
+            audit_id       # WHERE audit_id = ?
+        )
     )
+
     conn.commit()
     conn.close()
 
@@ -173,10 +183,11 @@ def get_latest_company_audit(company_id: str):
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT audit_id, status, started_at, completed_at, report_path
+        SELECT audit_id, status, started_at, completed_at, report_path,
+               total_documents, processed_documents, verified_documents, flagged_documents, failed_documents, out_of_scope_documents
         FROM company_audit_history
-        WHERE company_id=?
-        ORDER BY started_at DESC
+        WHERE company_id=? AND status='COMPLETED'
+        ORDER BY completed_at DESC
         LIMIT 1
         """,
         (company_id,)
@@ -184,7 +195,8 @@ def get_latest_company_audit(company_id: str):
     row = cursor.fetchone()
     conn.close()
     return dict(zip(
-        ["audit_id","status","started_at","completed_at","report_path"],
+        ["audit_id","status","started_at","completed_at","report_path",
+         "total_documents", "processed_documents", "verified_documents", "flagged_documents", "failed_documents", "out_of_scope_documents"],
         row
     )) if row else None
 
@@ -194,7 +206,7 @@ def get_company_audit_history(company_id: str):
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT audit_id, status, started_at, completed_at, details, report_path
+        SELECT audit_id, status, started_at, completed_at, total_documents, processed_documents, verified_documents, flagged_documents, failed_documents, out_of_scope_documents
         FROM company_audit_history
         WHERE company_id=?
         ORDER BY started_at DESC
@@ -205,7 +217,7 @@ def get_company_audit_history(company_id: str):
     conn.close()
     return [
         dict(zip(
-            ["audit_id","status","started_at","completed_at","details","report_path"],
+            ["audit_id","status","started_at","completed_at","total_documents", "processed_documents", "verified_documents", "flagged_documents", "failed_documents", "out_of_scope_documents",],
             r
         )) for r in rows
     ]
@@ -320,7 +332,7 @@ def get_document_audits_for_audit(audit_id: str):
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT document_id, status, audit_summary, hard_failures, soft_failures
+        SELECT document_id, document_type, file_type, result, audit_summary, hard_failures, soft_failures
         FROM document_audits
         WHERE audit_id=?
         """,
@@ -331,10 +343,12 @@ def get_document_audits_for_audit(audit_id: str):
     return [
         {
             "document_id": r[0],
-            "status": r[1],
-            "audit_summary": r[2],
-            "hard_failures": json.loads(r[3]) if r[3] else [],
-            "soft_failures": json.loads(r[4]) if r[4] else []
+            "document_type": r[1],
+            "file_type": r[2],
+            "result": r[3],
+            "audit_summary": r[4],
+            "hard_failures": json.loads(r[5]) if r[5] else [],
+            "soft_failures": json.loads(r[6]) if r[6] else []
         }
         for r in rows
     ]
@@ -375,6 +389,7 @@ def update_document_state(
     document_id: str,
     *,
     status: str | None = None,              # IN_PROGRESS / COMPLETED
+    audit_id: str | None = None,
     result: str | None = None,              # VERIFIED / FLAGGED / FAILED
     progress: int | None = None,             # 0–100
     current_step: str | None = None,         # graph node name
@@ -403,6 +418,10 @@ def update_document_state(
 
         if status == "COMPLETED":
             fields.append("completed_at = CURRENT_TIMESTAMP")
+
+    if audit_id is not None:
+        fields.append("audit_id = ?")
+        values.append(audit_id)
 
     if result is not None:
         fields.append("result = ?")
@@ -546,8 +565,9 @@ def get_audit_status_for_company(company_id: str):
         """
         SELECT
             COUNT(*) AS total_documents,
-            COUNT(CASE WHEN status = 'VERIFIED' THEN 1 END) AS verified_documents,
-            COUNT(CASE WHEN status = 'FAILED' THEN 1 END) AS failed_documents
+            COUNT(CASE WHEN result = 'VERIFIED' THEN 1 END) AS verified_documents,
+            COUNT(CASE WHEN result = 'FAILED' THEN 1 END) AS failed_documents,
+            COUNT(CASE WHEN result = 'FLAGGED' THEN 1 END) AS flagged_documents
         FROM document_audits
         WHERE company_id = ?
         """,
@@ -560,5 +580,172 @@ def get_audit_status_for_company(company_id: str):
     return {
         "total_documents": row[0],
         "verified_documents": row[1],
-        "failed_documents": row[2]
+        "failed_documents": row[2],
+        "flagged_documents": row[3]
     }
+
+
+
+
+# -------------------------
+# AUDIT HISTORY APPEND
+# -------------------------
+
+
+
+def try_finalize_company_audit(document_id: str) -> None:
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # 1. Get audit_id and company_id for this document
+    cursor.execute(
+        """
+        SELECT audit_id, company_id
+        FROM document_audits
+        WHERE document_id = ?
+        """,
+        (document_id,)
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return
+
+    audit_id = row[0]
+
+    # 2. Check if any documents are still IN_PROGRESS for this audit
+    cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM document_audits
+        WHERE audit_id = ?
+          AND status = 'IN_PROGRESS'
+        """,
+        (audit_id,)
+    )
+    remaining = cursor.fetchone()[0]
+
+    logger.info("%s docs are being processed", remaining)
+
+    # If even one document is running, do NOT finalize
+    if remaining > 0:
+        conn.close()
+        return
+    
+    logger.info("processing")
+
+    # 3. Aggregate final document results
+    cursor.execute(
+        """
+        SELECT
+            COUNT(*) AS total_documents,
+            SUM(result = 'VERIFIED') AS verified_documents,
+            SUM(result = 'FLAGGED') AS flagged_documents,
+            SUM(result = 'FAILED') AS failed_documents,
+            SUM(result = 'OUT_OF_SCOPE') AS out_of_scope_documents
+        FROM document_audits
+        WHERE audit_id = ?
+        """,
+        (audit_id,)
+    )
+    (
+        total_documents,
+        verified_documents,
+        flagged_documents,
+        failed_documents,
+        out_of_scope_documents
+    ) = cursor.fetchone()
+
+    # 4. Mark company audit as COMPLETED
+    cursor.execute(
+        """
+        UPDATE company_audit_history
+        SET
+            status = 'COMPLETED',
+            completed_at = CURRENT_TIMESTAMP,
+            total_documents = ?,
+            verified_documents = ?,
+            flagged_documents = ?,
+            failed_documents = ?,
+            out_of_scope_documents = ?
+        WHERE audit_id = ?
+        """,
+        (
+            total_documents,
+            verified_documents or 0,
+            flagged_documents or 0,
+            failed_documents or 0,
+            out_of_scope_documents or 0,
+            audit_id
+        )
+    )
+
+    conn.commit()
+    conn.close()
+
+
+
+
+
+def count_remaining_documents_for_audit(audit_id: str) -> int:
+        """
+        Returns number of documents still being processed for a given audit.
+        """
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM document_audits
+            WHERE audit_id = ?
+            AND status = 'IN_PROGRESS'
+            """,
+            (audit_id,)
+        )
+
+        remaining = cursor.fetchone()[0] or 0
+
+        conn.close()
+        return remaining
+
+
+
+
+
+def get_document_audits_for_audit(audit_id: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            document_id,
+            document_type,
+            result,
+            hard_failures,
+            soft_failures,
+            audit_summary
+        FROM document_audits
+        WHERE audit_id = ?
+        """,
+        (audit_id,)
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    documents = []
+
+    for row in rows:
+        documents.append({
+            "document_id": row[0],
+            "document_type": row[1],
+            "result": row[2],  # VERIFIED / FLAGGED / FAILED
+            "hard_failures": json.loads(row[3]) if row[3] else [],
+            "soft_failures": json.loads(row[4]) if row[4] else [],
+            "audit_summary": row[5]
+        })
+
+    return documents
+

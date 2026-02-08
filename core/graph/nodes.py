@@ -11,12 +11,39 @@ from services.extractor.invoice_extractor import extract_invoice
 from core.rules.invoice_validation import validate_invoice
 from core.rules.final_decision import decide_final_status
 from services.audit_helper.audit_summary_generator import generate_audit_summary
-from infra.db.db_functions import finalize_document_audit, update_document_state
+from infra.db.db_functions import finalize_document_audit, update_document_state, try_finalize_company_audit
 from config.logger import get_logger
+
+
+from infra.db.db_functions import (
+    get_latest_company_audit,
+    get_document_audits_for_audit,
+    get_company_by_id,
+    update_company_audit_status,
+    count_remaining_documents_for_audit,
+    get_document_audits_for_audit
+)
+
+from services.audit_helper.aggregate_functions import aggregate_company_metrics, aggregate_document_results, aggregate_rule_impact
+from services.audit_helper.audit_report_generator import generate_text_audit_report
+from services.audit_helper.pdf_generator import render_audit_report_pdf
+from services.llm.client import get_llm_client
+from datetime import datetime
 
 logger = get_logger(__name__)
 
 import os
+
+
+def _coerce_enum(value, enum_cls):
+    if value is None:
+        return None
+    if isinstance(value, enum_cls):
+        return value
+    try:
+        return enum_cls(value)
+    except Exception:
+        return value
 
 
 # ============================================================
@@ -69,8 +96,10 @@ def detect_file_type_node(state: AuditState) -> dict:
 
 
 def parse_pdf_node(state: AuditState) -> dict:
+    state.file_type = _coerce_enum(state.file_type, FileType)
     if state.file_type != FileType.PDF:
-        logger.warning(f"[{state.document_id}] Skipping PDF parsing, file type is {state.file_type.value}")
+        ft = state.file_type.value if hasattr(state.file_type, "value") else state.file_type
+        logger.warning(f"[{state.document_id}] Skipping PDF parsing, file type is {ft}")
         return {}
     
     logger.info(f"[{state.document_id}] Parsing PDF")
@@ -94,6 +123,7 @@ def parse_pdf_node(state: AuditState) -> dict:
 
 
 def classify_document_node(state: AuditState) -> dict:
+    state.file_type = _coerce_enum(state.file_type, FileType)
     if state.file_type != FileType.PDF or not state.parsed_content:
         logger.warning(f"[{state.document_id}] Skipping classification: insufficient data")
         return {}
@@ -130,25 +160,44 @@ def classify_document_node(state: AuditState) -> dict:
 
 # Handle non-invoice document types: BANK and PL
 def handle_non_invoice_node(state: AuditState) -> dict:
-    if state.document_type in [DocumentType.BANK_STATEMENT, DocumentType.P_AND_L]:
-        logger.info(f"[{state.document_id}] Handling non-invoice document type ({state.document_type}) - currently supported at dummy level.")
+    state.document_type = _coerce_enum(state.document_type, DocumentType)
+    if state.document_type != DocumentType.INVOICE:
+        dt = state.document_type.value if hasattr(state.document_type, "value") else state.document_type
+        logger.info(
+            f"[{state.document_id}] Handling non-invoice / unsupported document type ({dt})"
+        )
+
         update_document_state(
             document_id=state.document_id,
-            status=AuditStatus.COMPLETED,
-            result=DocumentResults.VERIFIED,
-            progress=100,
-            current_step="processed non-invoice document",
-            is_active=0
+            status="IN_PROGRESS",
+            progress=80,
+            current_step="processing non-invoice / unsupported document",
+            is_active=1
         )
+
+        # IMPORTANT:
+        # - BANK / P&L → VERIFIED (dummy support)
+        # - OTHER → FAILED (out of scope)
+        result = (
+            DocumentResults.VERIFIED
+            if state.document_type in [DocumentType.BANK_STATEMENT, DocumentType.P_AND_L]
+            else DocumentResults.FAILED
+        )
+
+        summary = (
+            "Document type currently supported at a limited level."
+            if result == DocumentResults.VERIFIED
+            else "Document type is not supported and marked as out of scope."
+        )
+
         return {
             "audit_trace": state.audit_trace + ["HANDLE_NON_INVOICE"],
-            "status": AuditStatus.COMPLETED,
-            "results": DocumentResults.VERIFIED
+            "status": AuditStatus.IN_PROGRESS,
+            "results": result,
+            "audit_summary": summary
         }
-    else:
-        logger.warning(f"[{state.document_id}] handle_non_invoice_node called for unsupported document type: {state.document_type.value}")
-        return {}
 
+    return {}
 
 # ============================================================
 # INVOICE PROCESSING PIPELINE
@@ -156,6 +205,7 @@ def handle_non_invoice_node(state: AuditState) -> dict:
 
 
 def extract_invoice_node(state: AuditState) -> dict:
+    state.document_type = _coerce_enum(state.document_type, DocumentType)
     if state.document_type != DocumentType.INVOICE:
         logger.warning(f"[{state.document_id}] Skipping invoice extraction: document type is {state.document_type.value}")
         return {}
@@ -177,7 +227,7 @@ def extract_invoice_node(state: AuditState) -> dict:
 
 
 def validate_invoice_node(state : AuditState) -> dict:
-
+    state.document_type = _coerce_enum(state.document_type, DocumentType)
     if state.document_type != DocumentType.INVOICE:
         return {}
     
@@ -201,6 +251,7 @@ def validate_invoice_node(state : AuditState) -> dict:
 
 
 def final_decision_node(state: AuditState) -> dict:
+    state.document_type = _coerce_enum(state.document_type, DocumentType)
     logger.info(f"[{state.document_id}] Making final decision")
 
     final_result = decide_final_status(
@@ -218,7 +269,7 @@ def final_decision_node(state: AuditState) -> dict:
 
     return {
         "audit_trace": state.audit_trace + ["FINAL_DECISION"],
-        "status": AuditStatus.COMPLETED,      # ✅ PROCESS STATE
+        "status": AuditStatus.IN_PROGRESS,      # ✅ PROCESS STATE
         "results": final_result               # ✅ AUDIT RESULT
     }
 
@@ -270,7 +321,7 @@ def fail_node(state: AuditState) -> dict:
     logger.error(f"[{state.document_id}] Audit failed early")
     update_document_state(
         document_id=state.document_id,
-        status="COMPLETED",
+        status="IN_PROGRESS",
         result="FAILED",
         progress=100,
         current_step="Document out of scope",
@@ -278,7 +329,7 @@ def fail_node(state: AuditState) -> dict:
     )
     return {
         "audit_trace": state.audit_trace + ["FAILED_EARLY"],
-        "status": "FAILED"
+        "results": DocumentResults.FAILED
     }
 
 
@@ -289,6 +340,7 @@ def fail_node(state: AuditState) -> dict:
 
 def persist_results_node(state: AuditState) -> dict:
     logger.info(f"[{state.document_id}] Persisting results to database")
+
     finalize_document_audit(
         document_id=state.document_id,
         audit_summary=state.audit_summary,
@@ -305,6 +357,112 @@ def persist_results_node(state: AuditState) -> dict:
         is_active=0
     )
 
+    # 🔥 NEW — attempt to finalize company audit
+    try_finalize_company_audit(document_id= state.document_id)
+
     return {
         "audit_trace": state.audit_trace + ["PERSIST_RESULTS"]
+    }
+
+
+# ============================================================
+# COMPANY AUDIT REPORT GENERATION
+# ===========================================================
+
+
+def generate_audit_report_node(state: AuditState) -> dict:
+
+    logger.info(
+        f"[{state.document_id}] Checking if company audit can be finalized and report generated"
+    )
+
+    audit = get_latest_company_audit(state.company_id)
+    if not audit:
+        logger.warning(f"No audit found for company={state.company_id}")
+        return {}
+
+    audit_id = audit["audit_id"]
+
+    remaining = count_remaining_documents_for_audit(audit_id)
+    if remaining > 0:
+        logger.info(
+            f"[{state.document_id}] {remaining} documents still processing, skipping report generation"
+        )
+        return {}
+
+    # Guard: only generate report once audit is completed
+    if audit.get("status") != "COMPLETED":
+        logger.info(f"Audit {audit_id} not completed yet, skipping report generation")
+        return {}
+
+    document_audits = get_document_audits_for_audit(audit_id)
+    if not document_audits:
+        logger.warning(f"No document audits found for audit_id={audit_id}")
+        return {}
+
+    company_metrics = aggregate_company_metrics(document_audits)
+    document_results = aggregate_document_results(document_audits)
+    rule_impact = aggregate_rule_impact(document_audits)
+
+    if not state.company_id:
+        logger.error("company_id missing in state during report generation")
+        return {}
+
+    company = get_company_by_id(state.company_id)
+    if not company:
+        logger.error(f"Company not found for company_id={state.company_id}")
+        return {}
+    
+    audit_context = {
+        "audit_id": audit_id,
+        "started_at": audit.get("started_at"),
+        "completed_at": audit.get("completed_at") or datetime.utcnow().isoformat(),
+        "metrics": company_metrics,
+        "rule_impact": rule_impact,
+        "document_results" : document_results
+    }
+
+    llm_client = get_llm_client()
+
+    report_json = generate_text_audit_report(
+        company=company,
+        audit=audit_context,
+        document_audits=document_results,
+        llm_client=llm_client
+    )
+
+    report_json.setdefault("report_metadata", {})
+    report_json["report_metadata"].setdefault(
+        "audit_date",
+        datetime.utcnow().strftime("%Y-%m-%d")
+    )
+    report_json["report_metadata"].setdefault(
+        "overall_status",
+        audit.get("status", "COMPLETED")
+    )
+
+    report_json["report_metadata"].setdefault(
+        "audit_id",
+        audit_id
+    )
+
+    report_json["report_metadata"].setdefault(
+        "company_name",
+        company.get("company_name") or company.get("name") or state.company_id
+    )
+
+    pdf_path = render_audit_report_pdf(report_json)
+
+    update_company_audit_status(
+        audit_id=audit_id,
+        status="COMPLETED",
+        report_path=pdf_path
+    )
+
+    logger.info(
+        f"[{state.document_id}] Audit report generated successfully at {pdf_path}"
+    )
+
+    return {
+        "audit_trace": state.audit_trace + ["GENERATE_AUDIT_REPORT"]
     }

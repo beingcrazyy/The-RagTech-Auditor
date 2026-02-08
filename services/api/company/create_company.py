@@ -14,7 +14,7 @@ def generate_company_id(name: str) -> str :
 def create_company(request: CreateCompanyRequest):
     logger.info(f"Received request to create company: {request.company_name}")
     company_id = generate_company_id(request.company_name)
-    
+
     try:
         insert_company(
             company_id=company_id,
