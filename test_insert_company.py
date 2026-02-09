@@ -1,7 +1,5 @@
-from infra.db.db_functions.company_apis_functions import insert_company
+from infra.db.db_functions import get_company_by_id
 
-insert_company(
-    company_id="alpha_fintech",
-    company_name="Alpha Fintech Pvt Ltd"
-)
 
+company = get_company_by_id("alpha_fintech")
+print(company)

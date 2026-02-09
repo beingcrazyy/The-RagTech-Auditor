@@ -1,5 +1,4 @@
-from infra.db.db import get_connection
-import sqlite3
+from infra.db.postgres import get_connection
 import json
 from config.logger import get_logger
 
@@ -11,15 +10,17 @@ logger = get_logger(__name__)
 
 def create_company_audit_record(audit_id: str, company_id: str):
     try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO company_audit_history (audit_id, company_id, status) VALUES (?, ?, 'RUNNING')",
-            (audit_id, company_id)
-        )
-        conn.commit()
-        conn.close()
-        return True
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                
+                cursor.execute(
+                    "INSERT INTO company_audit_history (audit_id, company_id, status) VALUES (?, ?, 'RUNNING')",
+                    (audit_id, company_id)
+                )
+                conn.commit()
+                conn.close()
+                return True
+                
     except Exception as e:
         logger.error("Error creating company audit record: %s", e, exc_info=True)
         return False
