@@ -20,8 +20,7 @@ def insert_company(company_id, company_name, company_category, company_country, 
                     (company_id, company_name, company_category, company_country, company_description)
                 )
                 conn.commit()
-                conn.close()
-                return True
+        return True
     except Exception as e:
         logger.error("Error inserting company: %s", e, exc_info=True)
         return False
@@ -61,27 +60,26 @@ def get_company_by_id(company_id: str):
 
 def get_all_companies():
     try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT
-                c.company_id,
-                c.company_name,
-                c.company_category,
-                c.company_country,
-                COUNT(d.document_id) AS total_documents,
-                COUNT(CASE WHEN da.result='VERIFIED' THEN 1 END),
-                COUNT(CASE WHEN da.result='FLAGGED' THEN 1 END),
-                COUNT(CASE WHEN da.result='FAILED' THEN 1 END)
-            FROM companies c
-            LEFT JOIN documents d ON c.company_id = d.company_id
-            LEFT JOIN document_audits da ON d.document_id = da.document_id
-            GROUP BY c.company_id
-            """
-        )
-        rows = cursor.fetchall()
-        conn.close()
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        c.company_id,
+                        c.company_name,
+                        c.company_category,
+                        c.company_country,
+                        COUNT(d.document_id) AS total_documents,
+                        COUNT(CASE WHEN da.result='VERIFIED' THEN 1 END),
+                        COUNT(CASE WHEN da.result='FLAGGED' THEN 1 END),
+                        COUNT(CASE WHEN da.result='FAILED' THEN 1 END)
+                    FROM companies c
+                    LEFT JOIN documents d ON c.company_id = d.company_id
+                    LEFT JOIN document_audits da ON d.document_id = da.document_id
+                    GROUP BY c.company_id
+                    """
+                )
+                rows = cursor.fetchall()
         return [
             {
                 "company_id": r[0],
