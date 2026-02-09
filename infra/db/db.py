@@ -1,18 +1,17 @@
-import sqlite3
-from pathlib import Path
 import psycopg
+from pathlib import Path
+from config.settings import POSTGRES_HOST, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_PORT, POSTGRES_SSLMODE
 
-
-DB_PATH = Path(__file__).parent / "audit.db"
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 def get_connection():
     return psycopg.connect(
-        host="regtech-postgres.postgres.database.azure.com",
-        dbname="regtechdb",
-        user="regtechadmin",
-        password="1426327@RagTech",
-        sslmode="require"
+        host=POSTGRES_HOST,
+        dbname=POSTGRES_DB,
+        user=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        port=POSTGRES_PORT,
+        sslmode=POSTGRES_SSLMODE,
     )
 
 def init_db():
@@ -20,7 +19,7 @@ def init_db():
     cursor = conn.cursor()
 
     with open(SCHEMA_PATH, "r") as f:
-        cursor.executescript(f.read())
+        cursor.execute(f.read())
 
     conn.commit()
     conn.close()

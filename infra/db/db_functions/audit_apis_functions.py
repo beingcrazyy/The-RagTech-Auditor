@@ -1,4 +1,4 @@
-from infra.db.postgres import get_connection
+from infra.db.db import get_connection
 import json
 from config.logger import get_logger
 
@@ -114,7 +114,7 @@ def create_document_audit(document_id, company_id, audit_id):
                     """
                     INSERT INTO document_audits
                     (document_id, company_id, audit_id, status, progress, started_at, is_active)
-                    VALUES (%s, %s, %s, 'IN_PROGRESS', 0, CURRENT_TIMESTAMP, 1)
+                    VALUES (%s, %s, %s, 'IN_PROGRESS', 0, CURRENT_TIMESTAMP, TRUE)
                     ON CONFLICT(document_id)
                     DO UPDATE SET
                         audit_id = excluded.audit_id,
@@ -122,7 +122,7 @@ def create_document_audit(document_id, company_id, audit_id):
                         progress = 0,
                         started_at = CURRENT_TIMESTAMP,
                         completed_at = NULL,
-                        is_active = 1
+                        is_active = TRUE
                     """,
                     (document_id, company_id, audit_id)
                 )
@@ -291,7 +291,7 @@ def get_company_live_audit_state(company_id: str):
                     FROM document_audits da
                     JOIN documents d ON d.document_id = da.document_id
                     WHERE da.company_id = %s
-                    AND da.is_active = 1
+                    AND da.is_active = TRUE
                     ORDER BY da.processing_started_at DESC
                     LIMIT 1
                     """,
@@ -427,10 +427,10 @@ def try_finalize_company_audit(document_id: str) -> None:
                     """
                     SELECT
                         COUNT(*) AS total_documents,
-                        SUM(result = 'VERIFIED') AS verified_documents,
-                        SUM(result = 'FLAGGED') AS flagged_documents,
-                        SUM(result = 'FAILED') AS failed_documents,
-                        SUM(result = 'OUT_OF_SCOPE') AS out_of_scope_documents
+                        COUNT(CASE WHEN result = 'VERIFIED' THEN 1 END) AS verified_documents,
+                        COUNT(CASE WHEN result = 'FLAGGED' THEN 1 END) AS flagged_documents,
+                        COUNT(CASE WHEN result = 'FAILED' THEN 1 END) AS failed_documents,
+                        COUNT(CASE WHEN result = 'OUT_OF_SCOPE' THEN 1 END) AS out_of_scope_documents
                     FROM document_audits
                     WHERE audit_id = %s
                     """,

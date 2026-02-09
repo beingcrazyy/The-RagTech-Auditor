@@ -12,19 +12,17 @@ RULES = [
     ("FIN_INV_PL_001","FINANCIAL","Cross Document","Invoice missing in P&L","Invoice not reflected in P&L statement","SOFT"),
 ]
 
-conn = get_connection()
-cursor = conn.cursor()
-
-cursor.executemany(
-    """
-    INSERT OR IGNORE INTO audit_rules
-    (rule_id, framework, category, title, description, severity)
-    VALUES (?, ?, ?, ?, ?, ?)
-    """,
-    RULES
-)
-
-conn.commit()
-conn.close()
+with get_connection() as conn:
+    with conn.cursor() as cursor:
+        cursor.executemany(
+            """
+            INSERT INTO audit_rules
+            (rule_id, framework, category, title, description, severity)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (rule_id) DO NOTHING
+            """,
+            RULES
+        )
+        conn.commit()
 
 print("✅ Financial rules seeded")

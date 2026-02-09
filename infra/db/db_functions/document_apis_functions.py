@@ -1,4 +1,4 @@
-from infra.db.postgres import get_connection
+from infra.db.db import get_connection
 import json
 import psycopg
 from config.logger import get_logger
@@ -130,7 +130,7 @@ def update_document_state(
     # ---- execution flags ----
     if is_active is not None:
         fields.append("is_active = %s")
-        values.append(is_active)
+        values.append(bool(is_active))
 
     # ---- audit output ----
     if hard_failures is not None:

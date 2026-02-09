@@ -1,4 +1,4 @@
-from infra.db.postgres import get_connection
+from infra.db.db import get_connection
 from config.logger import get_logger
 
 logger = get_logger(__name__)
