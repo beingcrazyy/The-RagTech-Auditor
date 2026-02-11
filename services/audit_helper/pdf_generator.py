@@ -10,6 +10,8 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from pathlib import Path
+from infra.storage.blob_client import upload_bytes
+import io
 
 
 def safe_text(value):
@@ -18,15 +20,14 @@ def safe_text(value):
     return str(value)
 
 def render_audit_report_pdf(report: dict) -> str:
-    reports_dir = Path("data/reports")
-    reports_dir.mkdir(parents=True, exist_ok=True)
-
     metadata = report["report_metadata"]
     filename = f"{metadata['company_name'].replace(' ', '_')}_{metadata['audit_id']}.pdf"
-    pdf_path = reports_dir / filename
+    blob_path = f"reports/{metadata['company_name'].replace(' ', '_')}/{filename}"
+
+    buffer = io.BytesIO()
 
     doc = SimpleDocTemplate(
-        str(pdf_path),
+        buffer,
         pagesize=A4,
         rightMargin=40,
         leftMargin=40,
@@ -143,4 +144,13 @@ def render_audit_report_pdf(report: dict) -> str:
     story.append(Paragraph(report["auditor_disclaimer"], styles["Normal"]))
 
     doc.build(story)
-    return str(pdf_path)
+
+    pdf_bytes = buffer.getvalue()
+
+    upload_bytes(
+        blob_path=blob_path,
+        data=pdf_bytes,
+        content_type="application/pdf"
+    )
+
+    return blob_path

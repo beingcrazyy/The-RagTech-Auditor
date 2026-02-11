@@ -1,25 +1,21 @@
-import psycopg
-from pathlib import Path
-from config.settings import POSTGRES_HOST, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_PORT, POSTGRES_SSLMODE
+from psycopg_pool import ConnectionPool
+import os
 
-SCHEMA_PATH = Path(__file__).parent / "schema.sql"
+POSTGRES_HOST = os.getenv("POSTGRES_HOST")
+POSTGRES_DB = os.getenv("POSTGRES_DB")
+POSTGRES_USER = os.getenv("POSTGRES_USER")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+POSTGRES_SSLMODE = os.getenv("POSTGRES_SSLMODE", "require")
+
+DATABASE_URL = (
+    f"host={POSTGRES_HOST} "
+    f"dbname={POSTGRES_DB} "
+    f"user={POSTGRES_USER} "
+    f"password={POSTGRES_PASSWORD} "
+    f"sslmode={POSTGRES_SSLMODE}"
+)
+
+pool = ConnectionPool(conninfo=DATABASE_URL, min_size=1, max_size=5)
 
 def get_connection():
-    return psycopg.connect(
-        host=POSTGRES_HOST,
-        dbname=POSTGRES_DB,
-        user=POSTGRES_USER,
-        password=POSTGRES_PASSWORD,
-        port=POSTGRES_PORT,
-        sslmode=POSTGRES_SSLMODE,
-    )
-
-def init_db():
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    with open(SCHEMA_PATH, "r") as f:
-        cursor.execute(f.read())
-
-    conn.commit()
-    conn.close()
+    return pool.connection()

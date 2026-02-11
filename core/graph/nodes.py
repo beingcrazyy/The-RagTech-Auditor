@@ -14,6 +14,8 @@ from services.audit_helper.audit_summary_generator import generate_audit_summary
 from infra.db.db_functions.audit_apis_functions import finalize_document_audit, try_finalize_company_audit
 from infra.db.db_functions.document_apis_functions import update_document_state
 from config.logger import get_logger
+from infra.storage.blob_client import download_bytes, upload_bytes
+import io
 
 
 from infra.db.db_functions.audit_apis_functions import (
@@ -114,9 +116,9 @@ def parse_pdf_node(state: AuditState) -> dict:
         
         logger.info(f"[{state.document_id}] Parsing PDF")
         trace = state.audit_trace + ["PARSE_PDF"]
-        file_path = state.file_path
+        file_bytes = download_bytes(state.file_path)
 
-        result = parse_pdf(file_path)
+        result = parse_pdf(io.BytesIO(file_bytes))
 
         update_document_state(
             document_id=state.document_id,

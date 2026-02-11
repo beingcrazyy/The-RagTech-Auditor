@@ -1,11 +1,11 @@
 import pdfplumber
 
-def parse_pdf(file_path : str) -> dict:
+def parse_pdf(file_obj) -> dict:
     raw_text = []
     tables = []
     page_text_map = {}
 
-    with pdfplumber.open(file_path) as pdf:
+    with pdfplumber.open(file_obj) as pdf:
         for i, page in enumerate(pdf.pages, start = 1):
             text = page.extract_text()
             raw_text.append(text)

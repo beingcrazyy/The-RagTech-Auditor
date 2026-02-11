@@ -1,39 +1,40 @@
-# 🚦 The RegTech Auditor — Backend
+# The RegTech Auditor — Backend
 
-Welcome to the **RegTech Auditor** backend! This system provides an intelligent, automated compliance auditing solution for companies. It ingests documents (invoices, bank statements, etc.), extracts data, validates it against rule sets, and generates audit reports using AI-driven logic.
+Welcome to the **RegTech Auditor** backend. This system provides an intelligent, automated compliance auditing solution for enterprises. It ingests documents (such as invoices and bank statements), extracts data, validates it against predefined rule sets, and generates audit reports using AI-driven logic.
 
-## 🚀 Overview
+## Overview
 
-The RegTech Auditor uses a sophisticated **Graph-based Architecture** (powered by LangGraph) to process documents through a rigid audit pipeline. It leverages Generative AI (OpenAI) to classify documents, extract unstructured data, and generate human-readable summaries and reports.
+The RegTech Auditor employs a sophisticated **Graph-based Architecture** (powered by LangGraph) to process documents through a structured audit pipeline. It leverages Generative AI (OpenAI) to classify documents, extract unstructured data, and generate comprehensive summaries and reports.
 
-## ✨ Features
+## Features
 
-- **🏢 Company Management**: Create and manage company profiles.
-- **📄 Document Ingestion**: Upload various document types (PDFs, Images). Automatic type detection (Invoice, Bank Statement, P&L, etc.).
-- **🤖 Automated Auditing**:
+- **Company Management**: Create and manage company profiles.
+- **Document Ingestion**: Upload various document types (PDFs, Images) with automatic type detection (Invoice, Bank Statement, P&L, etc.).
+- **Automated Auditing**:
     - **Heuristic & LLM Classification**: Accurately identifies document types.
     - **Extraction**: Extracts key fields (Invoice Number, Date, Totals, Tax Breakups).
-    - **Validation**: Runs rule-based checks (e.g., Math validation: Subtotal + Tax = Total).
+    - **Validation**: Executes rule-based checks (e.g., Math validation: Subtotal + Tax = Total).
     - **Decision Engine**: Automatically Flags, Verifies, or Fails documents based on confidence scores and hard/soft failures.
-- **👀 Human-in-the-Loop**: Allows human auditors to override system decisions and provide feedback.
-- **📊 Real-time Dashboard**: Track audit progress, flagged documents, and overall compliance health.
-- **📈 Audit History**: Maintain a complete history of all audits and their outcomes.
+- **Human-in-the-Loop**: Enables auditors to override system decisions and provide feedback.
+- **Real-time Dashboard**: Track audit progress, flagged documents, and overall compliance health.
+- **Audit History**: Maintains a complete history of all audits and their outcomes.
 
-## 🛠 Technology Stack
+## Technology Stack
 
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/) (Python)
-- **Database**: SQLite (Simple, lightweight, file-based)
+- **Database**: PostgreSQL (Robust, production-grade relational database)
 - **AI/LLM**: [LangChain](https://www.langchain.com/), [OpenAI](https://openai.com/)
 - **Orchestration**: LangGraph (for stateful audit workflows)
 - **Vector Search**: FAISS (for document similarity/search, if enabled)
 - **PDF Processing**: `pypdf`, `pdfplumber`
 
-## 📋 Prerequisites
+## Prerequisites
 
 - **Python 3.10+** installed.
+- **PostgreSQL**: Ensure a Postgres instance is running and accessible.
 - **OpenAI API Key**: Required for classification and extraction features.
 
-## ⚙️ Installation & Setup
+## Installation & Setup
 
 1. **Clone the Repository**
    ```bash
@@ -58,14 +59,23 @@ The RegTech Auditor uses a sophisticated **Graph-based Architecture** (powered b
    OPENAI_API_KEY=sk-your-api-key-here
    MODEL_NAME=gpt-4o-mini
    TEMPERATURE=0
+   
+   # Database Configuration
+   POSTGRES_HOST=localhost
+   POSTGRES_DB=regtechdb
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=password
+   POSTGRES_PORT=5432
+   POSTGRES_SSLMODE=prefer
    ```
 
-## 🏃 Running the Application
+## Running the Application
 
 1. **Initialize the Database**
-   This command creates the SQLite database and necessary tables.
+   This command initializes the database schema and seeds initial rules.
    ```bash
    python infra/db/init_db.py
+   python -m infra.db.seed_financial_rules
    ```
 
 2. **Start the API Server**
@@ -74,7 +84,7 @@ The RegTech Auditor uses a sophisticated **Graph-based Architecture** (powered b
    ```
    The server will start at `http://127.0.0.1:8000`.
 
-## 📂 Project Structure
+## Project Structure
 
 - **`core/`**: Application logic, including the LangGraph workflow (`graph/`), state definitions, and validation rules.
 - **`infra/db/`**: Database configuration and repositories.
@@ -84,9 +94,9 @@ The RegTech Auditor uses a sophisticated **Graph-based Architecture** (powered b
 - **`services/extractor/`**: Logic for extracting data from documents.
 - **`services/orchestrater/`**: Helpers for batch processing.
 
-## 📖 API Documentation
+## API Documentation
 
 The interactive API documentation (Swagger UI) is available at:
-👉 **[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)**
+**[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)**
 
 For a static reference, please see [api_documentation.md](api_documentation.md).

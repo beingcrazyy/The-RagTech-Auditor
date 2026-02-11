@@ -16,4 +16,9 @@ pypdf
 pypdf2
 pdfplumber
 
+azure-storage-blob
+
+psycopg_pool
+psycopg
+
 python-multipart
