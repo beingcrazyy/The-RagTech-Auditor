@@ -1,8 +1,12 @@
 from openai import OpenAI
 from dotenv import load_dotenv
+from services.llm.client import get_llm_client
 load_dotenv()
 
-client = OpenAI()
+
+
+def get_client():
+    return get_llm_client()
 
 def generate_audit_summary(
     status: str,
@@ -27,7 +31,7 @@ def generate_audit_summary(
     - Only explain the status based on issues listed
     """
 
-    response = client.chat.completions.create(
+    response = get_client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         temperature=0

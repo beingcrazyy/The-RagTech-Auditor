@@ -1,9 +1,5 @@
+import os
 from openai import OpenAI
-from dotenv import load_dotenv
-
-load_dotenv()
-
-_client = OpenAI()
 
 def get_llm_client():
-    return _client
+    return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))

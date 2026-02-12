@@ -22,3 +22,5 @@ psycopg_pool
 psycopg
 
 python-multipart
+
+reportlab
