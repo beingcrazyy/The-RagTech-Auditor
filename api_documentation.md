@@ -1,6 +1,6 @@
-# 🚦 The RegTech Auditor — V1 API Documentation
+# 🚦 The RegTech Auditor — V1.1 API Documentation
 
-Welcome to the official documentation for the RegTech Auditor API Version 1. This document describes the 13 production APIs for company, document, audit, human-in-the-loop, and dashboard operations.
+Welcome to the official documentation for the RegTech Auditor API Version 1. This document describes the 14 production APIs for company, document, audit, human-in-the-loop, and dashboard operations.
 
 ---
 
@@ -95,6 +95,67 @@ Retrieve a specific document’s details.
   "file_url": "https://example.com/policy.pdf",
   "status": "uploaded",
   "uploaded_at": "2024-05-02T12:00:00Z"
+}
+```
+
+---
+
+## 🗑️ Delete APIs
+
+Manage deletion of companies and documents.
+
+### DELETE /delete/company/{company_id}
+Delete a specific company.
+
+**Response:**
+```json
+{
+  "message": "Company deleted successfully"
+}
+```
+
+**Error Response (404):**
+```json
+{
+  "detail": "Company not found"
+}
+```
+
+---
+
+### DELETE /delete/documents/{company_id}
+Delete all documents belonging to a specific company.
+
+**Response:**
+```json
+{
+  "message": "All documents for company deleted successfully"
+}
+```
+
+**Error Response (404):**
+```json
+{
+  "detail": "No documents found for this company"
+}
+```
+
+---
+
+### DELETE /delete/document/{document_id}
+Delete a specific document by document ID.
+
+**Response:**
+```json
+{
+  "message": "Document deleted successfully"
+}
+```
+
+**Error Response (404):**
+```json
+{
+  "detail": "Document not found"
 }
 ```
 
@@ -242,6 +303,7 @@ Get dashboard metrics for a specific company.
 }
 ```
 
+
 ---
 
 ## 🔢 API Count Summary
@@ -250,12 +312,14 @@ Get dashboard metrics for a specific company.
 |-------------------------|-----------|
 | Company APIs            | 2         |
 | Document APIs           | 2         |
+| Delete APIs             | 3         |
 | Audit APIs              | 3         |
 | Human-in-the-loop APIs  | 2         |
 | Dashboard APIs          | 2         |
-| **Total**               | **11**    |
+| **Total**               | **14**    |
 
 > Note: The above lists 11 endpoints; endpoints with different resource IDs are counted as unique for a total of 13 APIs in the backend.
+> Note: All resource-specific routes (including delete endpoints) are counted as individual APIs for a total of 14 production endpoints in V1.1.
 
 ---
 
@@ -273,5 +337,8 @@ Get dashboard metrics for a specific company.
 10. Submit human review feedback (`POST /human_review/feedback`)
 11. Get dashboard summary (`GET /dashboard/summary`)
 12. Get dashboard company metrics (`GET /dashboard/company/{company_id}`)
+13. Delete specific document (`DELETE /delete/document/{document_id}`)
+14. Delete all documents of company (`DELETE /delete/documents/{company_id}`)
+15. Delete company (`DELETE /delete/company/{company_id}`)
 
 ---

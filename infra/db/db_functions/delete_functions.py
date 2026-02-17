@@ -7,57 +7,57 @@ logger = get_logger(__name__)
 
 
 def delete_company(company_id: str):
-    conn = get_connection()
-    cursor = conn.cursor()
+    with get_connection() as conn:
+        cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        DELETE FROM companies
-        WHERE company_id = %s
-        """,
-        (company_id,)
-    )
+        cursor.execute(
+            """
+            DELETE FROM companies
+            WHERE company_id = %s
+            RETURNING company_id
+            """,
+            (company_id,)
+        )
 
-    conn.commit()
-    cursor.close()
-    conn.close()
+        deleted = cursor.fetchone()
+        conn.commit()
 
+    return deleted
 
 
 def delete_documents_by_company(company_id: str):
-    conn = get_connection()
-    cursor = conn.cursor()
+    with get_connection() as conn:
+        cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        DELETE FROM documents
-        WHERE company_id = %s
-        """,
-        (company_id,)
-    )
+        cursor.execute(
+            """
+            DELETE FROM documents
+            WHERE company_id = %s
+            RETURNING document_id
+            """,
+            (company_id,)
+        )
 
-    conn.commit()
-    cursor.close()
-    conn.close()
+        deleted = cursor.fetchall()
+        conn.commit()
+
+    return deleted
 
 
 def delete_document_by_id(document_id: str):
-    conn = get_connection()
-    cursor = conn.cursor()
+    with get_connection() as conn:
+        cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        DELETE FROM documents
-        WHERE document_id = %s
-        RETURNING document_id
-        """,
-        (document_id,)
-    )
+        cursor.execute(
+            """
+            DELETE FROM documents
+            WHERE document_id = %s
+            RETURNING document_id
+            """,
+            (document_id,)
+        )
 
-    deleted = cursor.fetchone()
-
-    conn.commit()
-    cursor.close()
-    conn.close()
+        deleted = cursor.fetchone()
+        conn.commit()
 
     return deleted
