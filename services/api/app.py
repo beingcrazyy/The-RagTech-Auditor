@@ -18,6 +18,7 @@ from services.api.documents.view_document import router as view_document_router
 from services.api.human_in_loop.override_document import router as override_router
 from services.api.dashboard.metrics import router as dashboard_router
 from services.api.audit.live_status import router as live_status_router
+from services.api.deletion.delete import router as delete_router
 
 setup_logging()
 app = FastAPI(title = "The RegTech Auditor API")
@@ -72,3 +73,10 @@ app.include_router(override_router)
 # DASHBOARD
 #-------------------------------------------------------------------------------------------------
 app.include_router(dashboard_router)
+
+
+
+#-------------------------------------------------------------------------------------------------
+# DOCUMENT AND COMPANY DELETION
+#-------------------------------------------------------------------------------------------------
+app.include_router(delete_router)

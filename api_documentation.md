@@ -7,7 +7,7 @@ Welcome to the official documentation for the RegTech Auditor API Version 1. Thi
 ## 🌐 Base URL
 
 ```
-http://127.0.0.1:8000
+https://ragtech-backend-g3eqb6g8h4dfhxfg.centralindia-01.azurewebsites.net/
 ```
 
 ---
