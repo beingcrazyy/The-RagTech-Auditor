@@ -2,11 +2,11 @@ from fastapi import APIRouter, HTTPException
 from infra.db.db_functions.audit_apis_functions import get_document_audit_details
 
 router = APIRouter(
-    prefix="/companies/{company_id}/audit",
+    prefix="/companies/{company_id}/documents",
     tags=["audit"]
 )
 
-@router.get("/documents/{document_id}")
+@router.get("/{document_id}/audit")
 def document_audit_detail(company_id: str, document_id: str):
 
     audit = get_document_audit_details(company_id, document_id)

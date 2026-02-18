@@ -16,6 +16,7 @@ def view_document(company_id: str, document_id: str):
     logger.info(f"Viewing document {document_id} for company {company_id}")
 
     file_path = get_document_file_path(company_id, document_id)
+    logger.info(f"File path resolved: {file_path}")
 
     if not file_path:
         raise HTTPException(status_code=404, detail="Document not found")

@@ -5,14 +5,14 @@ from config.logger import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/documents", tags=["human-in-loop"])
+router = APIRouter(prefix="/companies/{company_id}/documents", tags=["human-in-loop"])
 
 class OverrideRequest(BaseModel):
     status: str  # VERIFIED | FLAGGED | FAILED
     comment: str
 
 @router.post("/{document_id}/override")
-def override_document(document_id: str, payload: OverrideRequest):
+def override_document(company_id: str, document_id: str, payload: OverrideRequest):
     status = payload.status.upper()
 
     if status not in {"VERIFIED", "FLAGGED", "FAILED"}:
